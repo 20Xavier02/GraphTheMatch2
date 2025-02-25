@@ -1,0 +1,160 @@
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f0f0f0;
+    font-family: Arial, sans-serif;
+}
+
+.game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.control-panel {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.size-inputs {
+    display: flex;
+    gap: 15px;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.input-group input {
+    width: 50px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.score-display {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #333;
+    margin-left: 20px;
+}
+
+#canvasContainer {
+    position: relative;
+    width: 600px;
+    height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.instructions-overlay {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background-color: white;
+    border: 2px solid #333;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+    flex-direction: column;
+    z-index: 10;
+}
+
+.instructions-overlay h2 {
+    margin-top: 0;
+    margin-bottom: 30px;
+    font-size: 24px;
+    color: #333;
+}
+
+.instructions-overlay ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    width: 80%;
+    max-width: 400px;
+}
+
+.instructions-overlay li {
+    margin-bottom: 20px;
+    font-size: 18px;
+    color: #444;
+    text-align: left;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    padding: 12px 18px;
+    font-size: 1em;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+#resetGraph {
+    background-color: #28a745;
+}
+
+#resetGraph:hover {
+    background-color: #218838;
+}
+
+#checkMatching {
+    background-color: #dc3545;
+}
+
+#checkMatching:hover {
+    background-color: #c82333;
+}
+
+canvas {
+    background-color: white;
+    border: 2px solid #333;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    touch-action: none;
+    width: 100%;
+    height: 100%;
+}
+
+.hidden {
+    display: none;
+}
+
+.weight-input {
+    position: absolute;
+    background: white;
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 2px;
+    width: 60px;
+    font-size: 14px;
+    text-align: center;
+}
+
+.weight-input:focus {
+    outline: none;
+    border-color: #007bff;
+}
