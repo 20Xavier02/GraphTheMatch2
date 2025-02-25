@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bipartite Matching Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="control-panel">
+            <button id="toggleInstructions">Instructions</button>
+            <button id="resetGraph">Reset</button>
+            <button id="checkMatching">Check</button>
+            <div class="size-inputs">
+                <div class="input-group">
+                    <label for="setASize">Set A Size:</label>
+                    <input type="number" id="setASize" min="1" max="10" value="3">
+                </div>
+                <div class="input-group">
+                    <label for="setBSize">Set B Size:</label>
+                    <input type="number" id="setBSize" min="1" max="10" value="4">
+                </div>
+            </div>
+            <div class="score-display">
+                Current Score: <span id="currentScore">0.00</span>
+            </div>
+        </div>
+        <div id="canvasContainer">
+            <div class="instructions-overlay">
+                <h2>How to Play:</h2>
+                <ul>
+                    <li><strong>Goal:</strong> Find the maximum weighted matching</li>
+                    <li><strong>Edges:</strong> Click to highlight/unhighlight</li>
+                    <li><strong>Weights:</strong> Click numbers to edit (-1 to 1)</li>
+                    <li><strong>Nodes:</strong> Drag to reposition</li>
+                    <li><strong>Sets:</strong> Red (A) and Blue (B) nodes</li>
+                    <li><strong>Matching:</strong> Can't share nodes</li>
+                    <li><strong>Score:</strong> Sum of selected edge pairs</li>
+                    <li><strong>Check:</strong> Verify if matching is optimal</li>
+                </ul>
+            </div>
+            <canvas id="gameCanvas"></canvas>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
