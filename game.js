@@ -4,8 +4,8 @@ class BipartiteMatchingGame {
         this.ctx = this.canvas.getContext('2d');
         
         // Game state
-        this.setASize = 3;
-        this.setBSize = 4;
+        this.setASize = 2;  // Changed from 3
+        this.setBSize = 3;  // Changed from 4
         this.nodeRadius = 20;
         this.nodes = { A: [], B: [] };
         this.edges = [];
@@ -18,10 +18,15 @@ class BipartiteMatchingGame {
         this.editingEdge = null;
         this.lastTap = 0;
         this.lastEdgeClicked = null;
+        this.showMaxScore = false;
+        this.maxScoreValue = '?';
         
         // Initialize game
         this.resizeCanvas();
         this.initializeGraph();
+        
+        // Create max score display
+        this.createMaxScoreDisplay();
         
         // Event listeners
         window.addEventListener('resize', () => this.resizeCanvas());
@@ -51,120 +56,82 @@ class BipartiteMatchingGame {
         document.getElementById('setBSize').addEventListener('change', (e) => this.handleSizeChange('B', e));
     }
 
-    resizeCanvas() {
-        const container = document.getElementById('canvasContainer');
-        this.canvas.width = container.offsetWidth;
-        this.canvas.height = container.offsetHeight;
-        this.draw();
+    createMaxScoreDisplay() {
+        const scoreDisplay = document.querySelector('.score-display');
+        const maxScoreSpan = document.createElement('div');
+        maxScoreSpan.innerHTML = `Max Score: <span id="maxScore">?</span>`;
+        maxScoreSpan.style.marginTop = '5px';
+        scoreDisplay.appendChild(maxScoreSpan);
+        
+        const winMessageSpan = document.createElement('div');
+        winMessageSpan.id = 'winMessage';
+        winMessageSpan.style.color = '#4CAF50';
+        winMessageSpan.style.marginTop = '5px';
+        winMessageSpan.style.display = 'none';
+        scoreDisplay.appendChild(winMessageSpan);
     }
-
-    initializeGraph() {
-        // Clear existing state
-        this.nodes = { A: [], B: [] };
-        this.edges = [];
-        this.highlightedEdges = new Set();
-
-        // Create nodes for set A
-        const ySpacingA = this.canvas.height / (this.setASize + 1);
-        for (let i = 0; i < this.setASize; i++) {
-            this.nodes.A.push({
-                x: this.canvas.width * 0.25,
-                y: ySpacingA * (i + 1),
-                label: `A${i + 1}`,
-                set: 'A'
-            });
+        startEdgeWeightEdit(edgeIndex, pos) {
+        if (this.isEditingWeight) {
+            return;
         }
 
-        // Create nodes for set B
-        const ySpacingB = this.canvas.height / (this.setBSize + 1);
-        for (let i = 0; i < this.setBSize; i++) {
-            this.nodes.B.push({
-                x: this.canvas.width * 0.75,
-                y: ySpacingB * (i + 1),
-                label: `B${i + 1}`,
-                set: 'B'
-            });
-        }
-
-        // Create edges with random weights
-        for (let i = 0; i < this.setASize; i++) {
-            for (let j = 0; j < this.setBSize; j++) {
-                const weight1 = this.generateWeight();
-                const weight2 = this.generateWeight();
-                this.edges.push({
-                    from: { set: 'A', index: i },
-                    to: { set: 'B', index: j },
-                    weight1: weight1,
-                    weight2: weight2,
-                    highlighted: false
-                });
-            }
-        }
-
-        this.updateScore();
-        this.draw();
-    }
-
-    generateWeight() {
-        if (Math.random() < 0.375) {
-            // 37.5% chance of weight being close to 0
-            return Number((Math.random() * 0.2 - 0.1).toFixed(2));
-        }
-        return Number((Math.random() * 1.8 - 0.9).toFixed(2)); // Range: [-0.9, 0.9]
-    }
-        getEventPos(e) {
+        this.isEditingWeight = true;
+        this.editingEdge = edgeIndex;
+        
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.step = '0.1';
+        input.min = '-1';
+        input.max = '1';
+        input.classList.add('weight-input');
+        
+        const edge = this.edges[edgeIndex];
+        input.value = (edge.weight1 + edge.weight2).toFixed(2);
+        
+        // Position input over the edge weight
         const rect = this.canvas.getBoundingClientRect();
-        let clientX, clientY;
+        input.style.position = 'absolute';
+        input.style.left = `${pos.x + rect.left - 30}px`;
+        input.style.top = `${pos.y + rect.top - 10}px`;
         
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
+        input.addEventListener('blur', () => {
+            if (this.isEditingWeight) {
+                this.handleWeightInputComplete(input);
+            }
+        });
         
-        return {
-            x: clientX - rect.left,
-            y: clientY - rect.top
-        };
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                input.blur();
+            }
+            e.stopPropagation();
+        });
+
+        document.body.appendChild(input);
+        input.focus();
+        input.select();
     }
 
-    findNodeAtPosition(pos) {
-        // Check set A
-        for (let i = 0; i < this.nodes.A.length; i++) {
-            const node = this.nodes.A[i];
-            if (Math.hypot(node.x - pos.x, node.y - pos.y) < this.nodeRadius) {
-                return { set: 'A', index: i };
-            }
-        }
-        // Check set B
-        for (let i = 0; i < this.nodes.B.length; i++) {
-            const node = this.nodes.B[i];
-            if (Math.hypot(node.x - pos.x, node.y - pos.y) < this.nodeRadius) {
-                return { set: 'B', index: i };
-            }
-        }
-        return null;
-    }
-
-    findEdgeAtPosition(pos) {
-        for (let i = 0; i < this.edges.length; i++) {
-            const edge = this.edges[i];
-            const fromNode = this.nodes[edge.from.set][edge.from.index];
-            const toNode = this.nodes[edge.to.set][edge.to.index];
+    handleWeightInputComplete(input) {
+        if (this.editingEdge !== null) {
+            let value = Number(input.value);
+            value = Math.max(-1, Math.min(1, value));
+            value = Number(value.toFixed(2));
             
-            // Calculate midpoint and distance to click
-            const midX = (fromNode.x + toNode.x) / 2;
-            const midY = (fromNode.y + toNode.y) / 2;
+            const edge = this.edges[this.editingEdge];
+            edge.weight1 = value / 2;
+            edge.weight2 = value / 2;
+            this.updateScore();
             
-            // Larger touch target for mobile
-            const touchRadius = 20;
-            if (Math.hypot(midX - pos.x, midY - pos.y) < touchRadius) {
-                return i;
-            }
+            // Reset max score display when weights change
+            this.maxScoreValue = '?';
+            document.getElementById('maxScore').textContent = '?';
+            document.getElementById('winMessage').style.display = 'none';
         }
-        return -1;
+        this.removeWeightInput();
+        this.isEditingWeight = false;
+        this.editingEdge = null;
+        this.draw();
     }
 
     handleStart(e) {
@@ -199,132 +166,31 @@ class BipartiteMatchingGame {
         }
     }
 
-    handleMove(e) {
-        e.preventDefault();
-        if (this.isDragging && this.draggedNode) {
-            const pos = this.getEventPos(e);
-            const node = this.nodes[this.draggedNode.set][this.draggedNode.index];
-            
-            // Keep node within canvas bounds
-            node.x = Math.max(this.nodeRadius, Math.min(this.canvas.width - this.nodeRadius, pos.x));
-            node.y = Math.max(this.nodeRadius, Math.min(this.canvas.height - this.nodeRadius, pos.y));
-            
-            this.draw();
-        }
-    }
-
-    handleEnd(e) {
-        e.preventDefault();
-        this.isDragging = false;
-        this.draggedNode = null;
-    }
-
-    handleGlobalClick(e) {
-        if (this.isEditingWeight && !e.target.classList.contains('weight-input')) {
-            this.isEditingWeight = false;
-            this.editingEdge = null;
-            this.removeWeightInput();
-            this.draw();
-        }
-    }
-
-    canHighlightEdge(edgeIndex) {
-        const edge = this.edges[edgeIndex];
-        if (edge.highlighted) {
-            return true; // Can always unhighlight
-        }
-
-        // Check if maximum edges already highlighted
-        if (this.highlightedEdges.size >= Math.min(this.setASize, this.setBSize)) {
-            return false;
-        }
-
-        // Check if either node is already used in a highlighted edge
-        for (let highlightedEdgeIndex of this.highlightedEdges) {
-            const highlightedEdge = this.edges[highlightedEdgeIndex];
-            if (this.nodesOverlap(edge, highlightedEdge)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    nodesOverlap(edge1, edge2) {
-        return (
-            (edge1.from.set === edge2.from.set && edge1.from.index === edge2.from.index) ||
-            (edge1.to.set === edge2.to.set && edge1.to.index === edge2.to.index)
-        );
-    }
-
-    toggleEdgeHighlight(edgeIndex) {
-        if (this.edges[edgeIndex].highlighted) {
-            this.edges[edgeIndex].highlighted = false;
-            this.highlightedEdges.delete(edgeIndex);
+    checkMatching() {
+        const maxScore = this.findMaximumMatching();
+        const currentScore = Array.from(this.highlightedEdges)
+            .reduce((sum, edgeIndex) => {
+                const edge = this.edges[edgeIndex];
+                return sum + edge.weight1 + edge.weight2;
+            }, 0);
+        
+        this.maxScoreValue = maxScore.toFixed(2);
+        document.getElementById('maxScore').textContent = this.maxScoreValue;
+        
+        const winMessage = document.getElementById('winMessage');
+        if (Math.abs(currentScore - maxScore) < 0.01) {
+            winMessage.textContent = "You win! This is the best matching available.";
+            winMessage.style.display = 'block';
         } else {
-            this.edges[edgeIndex].highlighted = true;
-            this.highlightedEdges.add(edgeIndex);
+            winMessage.style.display = 'none';
         }
-        this.updateScore();
-        this.draw();
-    }
-        startEdgeWeightEdit(edgeIndex, pos) {
-        if (this.isEditingWeight) {
-            return;
-        }
-
-        this.isEditingWeight = true;
-        this.editingEdge = edgeIndex;
-        
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.step = '0.1';
-        input.min = '-1';
-        input.max = '1';
-        input.classList.add('weight-input');
-        
-        const edge = this.edges[edgeIndex];
-        input.value = ((edge.weight1 + edge.weight2)).toFixed(2);
-        
-        // Position input over the edge weight
-        input.style.position = 'absolute';
-        input.style.left = `${pos.x - 30}px`;
-        input.style.top = `${pos.y - 10}px`;
-        
-        input.addEventListener('blur', () => this.handleWeightInputComplete(input));
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                input.blur();
-            }
-        });
-
-        document.body.appendChild(input);
-        input.focus();
-        input.select();
     }
 
-    handleWeightInputComplete(input) {
-        if (this.editingEdge !== null) {
-            let value = Number(input.value);
-            value = Math.max(-1, Math.min(1, value));
-            value = Number(value.toFixed(2));
-            
-            const edge = this.edges[this.editingEdge];
-            // Split the total weight between the two directed edges
-            edge.weight1 = value / 2;
-            edge.weight2 = value / 2;
-            this.updateScore();
-        }
-        this.removeWeightInput();
-        this.isEditingWeight = false;
-        this.editingEdge = null;
-        this.draw();
-    }
-
-    removeWeightInput() {
-        const input = document.querySelector('.weight-input');
-        if (input) {
-            input.remove();
-        }
+    resetGraph() {
+        this.initializeGraph();
+        this.maxScoreValue = '?';
+        document.getElementById('maxScore').textContent = '?';
+        document.getElementById('winMessage').style.display = 'none';
     }
 
     handleSizeChange(set, e) {
@@ -336,49 +202,10 @@ class BipartiteMatchingGame {
                 this.setBSize = value;
             }
             this.initializeGraph();
+            this.maxScoreValue = '?';
+            document.getElementById('maxScore').textContent = '?';
+            document.getElementById('winMessage').style.display = 'none';
         }
-    }
-
-    toggleInstructions() {
-        const instructionsOverlay = document.querySelector(".instructions-overlay");
-        const gameCanvas = document.getElementById("gameCanvas");
-        const toggleButton = document.getElementById("toggleInstructions");
-
-        if (instructionsOverlay.style.display === "none" || instructionsOverlay.style.display === "") {
-            instructionsOverlay.style.display = "flex";
-            gameCanvas.classList.add("hidden");
-            toggleButton.textContent = "Resume Game";
-        } else {
-            instructionsOverlay.style.display = "none";
-            gameCanvas.classList.remove("hidden");
-            toggleButton.textContent = "Instructions";
-        }
-    }
-
-    resetGraph() {
-        this.initializeGraph();
-    }
-
-    updateScore() {
-        let totalScore = 0;
-        for (let edgeIndex of this.highlightedEdges) {
-            const edge = this.edges[edgeIndex];
-            totalScore += edge.weight1 + edge.weight2;
-        }
-        document.getElementById('currentScore').textContent = totalScore.toFixed(2);
-    }
-
-    checkMatching() {
-        const maxScore = this.findMaximumMatching();
-        const currentScore = Array.from(this.highlightedEdges)
-            .reduce((sum, edgeIndex) => {
-                const edge = this.edges[edgeIndex];
-                return sum + edge.weight1 + edge.weight2;
-            }, 0);
-        
-        alert(Math.abs(currentScore - maxScore) < 0.01 ? 
-            "Correct! This is the maximum matching!" : 
-            "Not quite - there's a better matching possible!");
     }
         findMaximumMatching() {
         // Hungarian algorithm implementation
@@ -452,7 +279,7 @@ class BipartiteMatchingGame {
                 maxScore += weights[match[j]][j];
             }
         }
-        return maxScore;
+        return Math.max(0, maxScore); // Ensure max score is never negative (empty matching = 0)
     }
 
     draw() {
