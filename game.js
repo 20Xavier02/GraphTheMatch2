@@ -18,15 +18,24 @@ class BipartiteMatchingGame {
         this.editingEdge = null;
         this.lastTap = 0;
         this.lastEdgeClicked = null;
-        this.showMaxScore = false;
-        this.maxScoreValue = '?';
         
         // Initialize game
         this.resizeCanvas();
         this.initializeGraph();
         
         // Create max score display
-        this.createMaxScoreDisplay();
+        const scoreDisplay = document.querySelector('.score-display');
+        const maxScoreSpan = document.createElement('div');
+        maxScoreSpan.innerHTML = `Max Score: <span id="maxScore">?</span>`;
+        maxScoreSpan.style.marginTop = '5px';
+        scoreDisplay.appendChild(maxScoreSpan);
+        
+        const winMessageSpan = document.createElement('div');
+        winMessageSpan.id = 'winMessage';
+        winMessageSpan.style.color = '#4CAF50';
+        winMessageSpan.style.marginTop = '5px';
+        winMessageSpan.style.display = 'none';
+        scoreDisplay.appendChild(winMessageSpan);
         
         // Event listeners
         window.addEventListener('resize', () => this.resizeCanvas());
@@ -56,21 +65,172 @@ class BipartiteMatchingGame {
         document.getElementById('setBSize').addEventListener('change', (e) => this.handleSizeChange('B', e));
     }
 
-    createMaxScoreDisplay() {
-        const scoreDisplay = document.querySelector('.score-display');
-        const maxScoreSpan = document.createElement('div');
-        maxScoreSpan.innerHTML = `Max Score: <span id="maxScore">?</span>`;
-        maxScoreSpan.style.marginTop = '5px';
-        scoreDisplay.appendChild(maxScoreSpan);
-        
-        const winMessageSpan = document.createElement('div');
-        winMessageSpan.id = 'winMessage';
-        winMessageSpan.style.color = '#4CAF50';
-        winMessageSpan.style.marginTop = '5px';
-        winMessageSpan.style.display = 'none';
-        scoreDisplay.appendChild(winMessageSpan);
+    resizeCanvas() {
+        const container = document.getElementById('canvasContainer');
+        this.canvas.width = container.offsetWidth;
+        this.canvas.height = container.offsetHeight;
+        this.draw();
     }
-        startEdgeWeightEdit(edgeIndex, pos) {
+        initializeGraph() {
+        // Clear existing state
+        this.nodes = { A: [], B: [] };
+        this.edges = [];
+        this.highlightedEdges = new Set();
+
+        // Create nodes for set A
+        const ySpacingA = this.canvas.height / (this.setASize + 1);
+        for (let i = 0; i < this.setASize; i++) {
+            this.nodes.A.push({
+                x: this.canvas.width * 0.25,
+                y: ySpacingA * (i + 1),
+                label: `A${i + 1}`,
+                set: 'A'
+            });
+        }
+
+        // Create nodes for set B
+        const ySpacingB = this.canvas.height / (this.setBSize + 1);
+        for (let i = 0; i < this.setBSize; i++) {
+            this.nodes.B.push({
+                x: this.canvas.width * 0.75,
+                y: ySpacingB * (i + 1),
+                label: `B${i + 1}`,
+                set: 'B'
+            });
+        }
+
+        // Create edges with random weights
+        for (let i = 0; i < this.setASize; i++) {
+            for (let j = 0; j < this.setBSize; j++) {
+                const weight1 = this.generateWeight();
+                const weight2 = this.generateWeight();
+                this.edges.push({
+                    from: { set: 'A', index: i },
+                    to: { set: 'B', index: j },
+                    weight1: weight1,
+                    weight2: weight2,
+                    highlighted: false
+                });
+            }
+        }
+
+        this.updateScore();
+        this.draw();
+    }
+
+    generateWeight() {
+        if (Math.random() < 0.375) {
+            // 37.5% chance of weight being close to 0
+            return Number((Math.random() * 0.2 - 0.1).toFixed(2));
+        }
+        return Number((Math.random() * 1.8 - 0.9).toFixed(2)); // Range: [-0.9, 0.9]
+    }
+
+    getEventPos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        let clientX, clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
+
+    findNodeAtPosition(pos) {
+        for (let i = 0; i < this.nodes.A.length; i++) {
+            const node = this.nodes.A[i];
+            if (Math.hypot(node.x - pos.x, node.y - pos.y) < this.nodeRadius) {
+                return { set: 'A', index: i };
+            }
+        }
+        for (let i = 0; i < this.nodes.B.length; i++) {
+            const node = this.nodes.B[i];
+            if (Math.hypot(node.x - pos.x, node.y - pos.y) < this.nodeRadius) {
+                return { set: 'B', index: i };
+            }
+        }
+        return null;
+    }
+
+    findEdgeAtPosition(pos) {
+        for (let i = 0; i < this.edges.length; i++) {
+            const edge = this.edges[i];
+            const fromNode = this.nodes[edge.from.set][edge.from.index];
+            const toNode = this.nodes[edge.to.set][edge.to.index];
+            
+            const midX = (fromNode.x + toNode.x) / 2;
+            const midY = (fromNode.y + toNode.y) / 2;
+            
+            if (Math.hypot(midX - pos.x, midY - pos.y) < 20) {
+                return i;
+            }
+        }
+        return -1;
+    }
+        handleStart(e) {
+        e.preventDefault();
+        const pos = this.getEventPos(e);
+        
+        // Check for node dragging
+        const node = this.findNodeAtPosition(pos);
+        if (node) {
+            this.isDragging = true;
+            this.draggedNode = node;
+            return;
+        }
+
+        // Check for edge interaction
+        const edgeIndex = this.findEdgeAtPosition(pos);
+        if (edgeIndex !== -1) {
+            const now = Date.now();
+            
+            if (now - this.lastTap < 300 && edgeIndex === this.lastEdgeClicked) {
+                // Double tap - edit weight
+                this.startEdgeWeightEdit(edgeIndex, pos);
+            } else {
+                // Single tap - toggle highlight
+                if (this.canHighlightEdge(edgeIndex)) {
+                    this.toggleEdgeHighlight(edgeIndex);
+                }
+            }
+            
+            this.lastTap = now;
+            this.lastEdgeClicked = edgeIndex;
+        }
+    }
+
+    handleMove(e) {
+        e.preventDefault();
+        if (this.isDragging && this.draggedNode) {
+            const pos = this.getEventPos(e);
+            const node = this.nodes[this.draggedNode.set][this.draggedNode.index];
+            node.x = Math.max(this.nodeRadius, Math.min(this.canvas.width - this.nodeRadius, pos.x));
+            node.y = Math.max(this.nodeRadius, Math.min(this.canvas.height - this.nodeRadius, pos.y));
+            this.draw();
+        }
+    }
+
+    handleEnd(e) {
+        e.preventDefault();
+        this.isDragging = false;
+        this.draggedNode = null;
+    }
+
+    handleGlobalClick(e) {
+        if (this.isEditingWeight && !e.target.classList.contains('weight-input')) {
+            this.handleWeightInputComplete(document.querySelector('.weight-input'));
+        }
+    }
+
+    startEdgeWeightEdit(edgeIndex, pos) {
         if (this.isEditingWeight) {
             return;
         }
@@ -88,7 +248,6 @@ class BipartiteMatchingGame {
         const edge = this.edges[edgeIndex];
         input.value = (edge.weight1 + edge.weight2).toFixed(2);
         
-        // Position input over the edge weight
         const rect = this.canvas.getBoundingClientRect();
         input.style.position = 'absolute';
         input.style.left = `${pos.x + rect.left - 30}px`;
@@ -124,7 +283,6 @@ class BipartiteMatchingGame {
             this.updateScore();
             
             // Reset max score display when weights change
-            this.maxScoreValue = '?';
             document.getElementById('maxScore').textContent = '?';
             document.getElementById('winMessage').style.display = 'none';
         }
@@ -134,36 +292,57 @@ class BipartiteMatchingGame {
         this.draw();
     }
 
-    handleStart(e) {
-        e.preventDefault();
-        const pos = this.getEventPos(e);
-        
-        // Check for node dragging
-        const node = this.findNodeAtPosition(pos);
-        if (node) {
-            this.isDragging = true;
-            this.draggedNode = node;
-            return;
+    removeWeightInput() {
+        const input = document.querySelector('.weight-input');
+        if (input) {
+            input.remove();
+        }
+    }
+
+    canHighlightEdge(edgeIndex) {
+        const edge = this.edges[edgeIndex];
+        if (edge.highlighted) {
+            return true; // Can always unhighlight
         }
 
-        // Check for edge interaction
-        const edgeIndex = this.findEdgeAtPosition(pos);
-        if (edgeIndex !== -1) {
-            const now = Date.now();
-            
-            if (now - this.lastTap < 300 && edgeIndex === this.lastEdgeClicked) {
-                // Double tap - edit weight
-                this.startEdgeWeightEdit(edgeIndex, pos);
-            } else {
-                // Single tap - toggle highlight
-                if (this.canHighlightEdge(edgeIndex)) {
-                    this.toggleEdgeHighlight(edgeIndex);
-                }
-            }
-            
-            this.lastTap = now;
-            this.lastEdgeClicked = edgeIndex;
+        if (this.highlightedEdges.size >= Math.min(this.setASize, this.setBSize)) {
+            return false;
         }
+
+        for (let highlightedEdgeIndex of this.highlightedEdges) {
+            const highlightedEdge = this.edges[highlightedEdgeIndex];
+            if (this.nodesOverlap(edge, highlightedEdge)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    nodesOverlap(edge1, edge2) {
+        return (
+            (edge1.from.set === edge2.from.set && edge1.from.index === edge2.from.index) ||
+            (edge1.to.set === edge2.to.set && edge1.to.index === edge2.to.index)
+        );
+    }
+        toggleEdgeHighlight(edgeIndex) {
+        if (this.edges[edgeIndex].highlighted) {
+            this.edges[edgeIndex].highlighted = false;
+            this.highlightedEdges.delete(edgeIndex);
+        } else {
+            this.edges[edgeIndex].highlighted = true;
+            this.highlightedEdges.add(edgeIndex);
+        }
+        this.updateScore();
+        this.draw();
+    }
+
+    updateScore() {
+        let totalScore = 0;
+        for (let edgeIndex of this.highlightedEdges) {
+            const edge = this.edges[edgeIndex];
+            totalScore += edge.weight1 + edge.weight2;
+        }
+        document.getElementById('currentScore').textContent = totalScore.toFixed(2);
     }
 
     checkMatching() {
@@ -174,8 +353,7 @@ class BipartiteMatchingGame {
                 return sum + edge.weight1 + edge.weight2;
             }, 0);
         
-        this.maxScoreValue = maxScore.toFixed(2);
-        document.getElementById('maxScore').textContent = this.maxScoreValue;
+        document.getElementById('maxScore').textContent = maxScore.toFixed(2);
         
         const winMessage = document.getElementById('winMessage');
         if (Math.abs(currentScore - maxScore) < 0.01) {
@@ -186,33 +364,10 @@ class BipartiteMatchingGame {
         }
     }
 
-    resetGraph() {
-        this.initializeGraph();
-        this.maxScoreValue = '?';
-        document.getElementById('maxScore').textContent = '?';
-        document.getElementById('winMessage').style.display = 'none';
-    }
-
-    handleSizeChange(set, e) {
-        const value = parseInt(e.target.value);
-        if (value >= 1 && value <= 10) {
-            if (set === 'A') {
-                this.setASize = value;
-            } else {
-                this.setBSize = value;
-            }
-            this.initializeGraph();
-            this.maxScoreValue = '?';
-            document.getElementById('maxScore').textContent = '?';
-            document.getElementById('winMessage').style.display = 'none';
-        }
-    }
-        findMaximumMatching() {
-        // Hungarian algorithm implementation
+    findMaximumMatching() {
         const n = Math.max(this.setASize, this.setBSize);
         const weights = Array(n).fill().map(() => Array(n).fill(-Infinity));
         
-        // Fill weight matrix
         for (let i = 0; i < this.setASize; i++) {
             for (let j = 0; j < this.setBSize; j++) {
                 const edgeIndex = i * this.setBSize + j;
@@ -220,7 +375,7 @@ class BipartiteMatchingGame {
             }
         }
         
-        return this.hungarianAlgorithm(weights);
+        return Math.max(0, this.hungarianAlgorithm(weights));
     }
 
     hungarianAlgorithm(weights) {
@@ -279,7 +434,43 @@ class BipartiteMatchingGame {
                 maxScore += weights[match[j]][j];
             }
         }
-        return Math.max(0, maxScore); // Ensure max score is never negative (empty matching = 0)
+        return maxScore;
+    }
+
+    resetGraph() {
+        this.initializeGraph();
+        document.getElementById('maxScore').textContent = '?';
+        document.getElementById('winMessage').style.display = 'none';
+    }
+
+    handleSizeChange(set, e) {
+        const value = parseInt(e.target.value);
+        if (value >= 1 && value <= 10) {
+            if (set === 'A') {
+                this.setASize = value;
+            } else {
+                this.setBSize = value;
+            }
+            this.initializeGraph();
+            document.getElementById('maxScore').textContent = '?';
+            document.getElementById('winMessage').style.display = 'none';
+        }
+    }
+
+    toggleInstructions() {
+        const instructionsOverlay = document.querySelector(".instructions-overlay");
+        const gameCanvas = document.getElementById("gameCanvas");
+        const toggleButton = document.getElementById("toggleInstructions");
+
+        if (instructionsOverlay.style.display === "none" || instructionsOverlay.style.display === "") {
+            instructionsOverlay.style.display = "flex";
+            gameCanvas.classList.add("hidden");
+            toggleButton.textContent = "Resume Game";
+        } else {
+            instructionsOverlay.style.display = "none";
+            gameCanvas.classList.remove("hidden");
+            toggleButton.textContent = "Instructions";
+        }
     }
 
     draw() {
@@ -290,22 +481,19 @@ class BipartiteMatchingGame {
             const fromNode = this.nodes[edge.from.set][edge.from.index];
             const toNode = this.nodes[edge.to.set][edge.to.index];
             
-            // Draw edge line
             this.ctx.beginPath();
             this.ctx.moveTo(fromNode.x, fromNode.y);
             this.ctx.lineTo(toNode.x, toNode.y);
-            this.ctx.strokeStyle = '#666';
+            this.ctx.strokeStyle = edge.highlighted ? '#000' : '#666';
             this.ctx.lineWidth = edge.highlighted ? 3 : 1;
             this.ctx.stroke();
 
-            // Draw edge weight
             const midX = (fromNode.x + toNode.x) / 2;
             const midY = (fromNode.y + toNode.y) / 2;
             
             this.ctx.save();
             this.ctx.translate(midX, midY);
             
-            // Always draw text upright
             let angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
             if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
                 angle += Math.PI;
@@ -334,7 +522,6 @@ class BipartiteMatchingGame {
                 this.ctx.lineWidth = 1;
                 this.ctx.stroke();
 
-                // Draw node label
                 this.ctx.fillStyle = 'white';
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'middle';
