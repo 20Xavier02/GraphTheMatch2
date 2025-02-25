@@ -16,13 +16,14 @@ class BipartiteMatchingGame {
         this.draggedNode = null;
         this.isEditingWeight = false;
         this.editingEdge = null;
-        this.lastTap = 0; // For handling double taps on mobile
+        this.lastTap = 0;
+        this.lastEdgeClicked = null;
         
         // Initialize game
         this.resizeCanvas();
         this.initializeGraph();
         
-        // Event listeners for both mouse and touch
+        // Event listeners
         window.addEventListener('resize', () => this.resizeCanvas());
         
         // Mouse events
@@ -36,15 +37,18 @@ class BipartiteMatchingGame {
         this.canvas.addEventListener('touchend', (e) => this.handleEnd(e));
         this.canvas.addEventListener('touchcancel', (e) => this.handleEnd(e));
         
-        // Global click/touch handler for weight editing
+        // Global click/touch handler
         document.addEventListener('click', (e) => this.handleGlobalClick(e));
         document.addEventListener('touchend', (e) => this.handleGlobalClick(e));
         
-        // Input listeners
-        document.getElementById('setASize').addEventListener('change', (e) => this.handleSizeChange('A', e));
-        document.getElementById('setBSize').addEventListener('change', (e) => this.handleSizeChange('B', e));
+        // Button handlers
+        document.getElementById('toggleInstructions').addEventListener('click', () => this.toggleInstructions());
         document.getElementById('resetGraph').addEventListener('click', () => this.resetGraph());
         document.getElementById('checkMatching').addEventListener('click', () => this.checkMatching());
+        
+        // Size input handlers
+        document.getElementById('setASize').addEventListener('change', (e) => this.handleSizeChange('A', e));
+        document.getElementById('setBSize').addEventListener('change', (e) => this.handleSizeChange('B', e));
     }
 
     resizeCanvas() {
@@ -102,17 +106,16 @@ class BipartiteMatchingGame {
     }
 
     generateWeight() {
-        // 25-50% chance of weight being close to 0
         if (Math.random() < 0.375) {
+            // 37.5% chance of weight being close to 0
             return Number((Math.random() * 0.2 - 0.1).toFixed(2));
         }
-        return Number((Math.random() * 2 - 1).toFixed(2));
+        return Number((Math.random() * 1.8 - 0.9).toFixed(2)); // Range: [-0.9, 0.9]
     }
-    getEventPos(e) {
+        getEventPos(e) {
         const rect = this.canvas.getBoundingClientRect();
         let clientX, clientY;
         
-        // Handle both mouse and touch events
         if (e.touches && e.touches.length > 0) {
             clientX = e.touches[0].clientX;
             clientY = e.touches[0].clientY;
@@ -151,7 +154,7 @@ class BipartiteMatchingGame {
             const fromNode = this.nodes[edge.from.set][edge.from.index];
             const toNode = this.nodes[edge.to.set][edge.to.index];
             
-            // Check if click/touch is near edge weight text
+            // Calculate midpoint and distance to click
             const midX = (fromNode.x + toNode.x) / 2;
             const midY = (fromNode.y + toNode.y) / 2;
             
@@ -165,7 +168,7 @@ class BipartiteMatchingGame {
     }
 
     handleStart(e) {
-        e.preventDefault(); // Prevent scrolling on mobile
+        e.preventDefault();
         const pos = this.getEventPos(e);
         
         // Check for node dragging
@@ -181,14 +184,13 @@ class BipartiteMatchingGame {
         if (edgeIndex !== -1) {
             const now = Date.now();
             
-            // Handle double tap/click for weight editing
-            if (now - this.lastTap < 300 && this.lastEdgeClicked === edgeIndex) {
+            if (now - this.lastTap < 300 && edgeIndex === this.lastEdgeClicked) {
+                // Double tap - edit weight
                 this.startEdgeWeightEdit(edgeIndex, pos);
             } else {
-                // Single tap/click - toggle highlight if valid
+                // Single tap - toggle highlight
                 if (this.canHighlightEdge(edgeIndex)) {
                     this.toggleEdgeHighlight(edgeIndex);
-                    this.updateScore();
                 }
             }
             
@@ -218,7 +220,6 @@ class BipartiteMatchingGame {
     }
 
     handleGlobalClick(e) {
-        // Handle clicking/tapping outside of weight edit
         if (this.isEditingWeight && !e.target.classList.contains('weight-input')) {
             this.isEditingWeight = false;
             this.editingEdge = null;
@@ -227,7 +228,46 @@ class BipartiteMatchingGame {
         }
     }
 
-    startEdgeWeightEdit(edgeIndex, pos) {
+    canHighlightEdge(edgeIndex) {
+        const edge = this.edges[edgeIndex];
+        if (edge.highlighted) {
+            return true; // Can always unhighlight
+        }
+
+        // Check if maximum edges already highlighted
+        if (this.highlightedEdges.size >= Math.min(this.setASize, this.setBSize)) {
+            return false;
+        }
+
+        // Check if either node is already used in a highlighted edge
+        for (let highlightedEdgeIndex of this.highlightedEdges) {
+            const highlightedEdge = this.edges[highlightedEdgeIndex];
+            if (this.nodesOverlap(edge, highlightedEdge)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    nodesOverlap(edge1, edge2) {
+        return (
+            (edge1.from.set === edge2.from.set && edge1.from.index === edge2.from.index) ||
+            (edge1.to.set === edge2.to.set && edge1.to.index === edge2.to.index)
+        );
+    }
+
+    toggleEdgeHighlight(edgeIndex) {
+        if (this.edges[edgeIndex].highlighted) {
+            this.edges[edgeIndex].highlighted = false;
+            this.highlightedEdges.delete(edgeIndex);
+        } else {
+            this.edges[edgeIndex].highlighted = true;
+            this.highlightedEdges.add(edgeIndex);
+        }
+        this.updateScore();
+        this.draw();
+    }
+        startEdgeWeightEdit(edgeIndex, pos) {
         if (this.isEditingWeight) {
             return;
         }
@@ -243,7 +283,7 @@ class BipartiteMatchingGame {
         input.classList.add('weight-input');
         
         const edge = this.edges[edgeIndex];
-        input.value = ((edge.weight1 + edge.weight2) / 2).toFixed(2);
+        input.value = ((edge.weight1 + edge.weight2)).toFixed(2);
         
         // Position input over the edge weight
         input.style.position = 'absolute';
@@ -259,10 +299,15 @@ class BipartiteMatchingGame {
 
         document.body.appendChild(input);
         input.focus();
+        input.select();
     }
-      handleWeightInputComplete(input) {
+
+    handleWeightInputComplete(input) {
         if (this.editingEdge !== null) {
-            const value = Math.max(-1, Math.min(1, Number(input.value)));
+            let value = Number(input.value);
+            value = Math.max(-1, Math.min(1, value));
+            value = Number(value.toFixed(2));
+            
             const edge = this.edges[this.editingEdge];
             // Split the total weight between the two directed edges
             edge.weight1 = value / 2;
@@ -294,6 +339,22 @@ class BipartiteMatchingGame {
         }
     }
 
+    toggleInstructions() {
+        const instructionsOverlay = document.querySelector(".instructions-overlay");
+        const gameCanvas = document.getElementById("gameCanvas");
+        const toggleButton = document.getElementById("toggleInstructions");
+
+        if (instructionsOverlay.style.display === "none" || instructionsOverlay.style.display === "") {
+            instructionsOverlay.style.display = "flex";
+            gameCanvas.classList.add("hidden");
+            toggleButton.textContent = "Resume Game";
+        } else {
+            instructionsOverlay.style.display = "none";
+            gameCanvas.classList.remove("hidden");
+            toggleButton.textContent = "Instructions";
+        }
+    }
+
     resetGraph() {
         this.initializeGraph();
     }
@@ -319,8 +380,7 @@ class BipartiteMatchingGame {
             "Correct! This is the maximum matching!" : 
             "Not quite - there's a better matching possible!");
     }
-
-    findMaximumMatching() {
+        findMaximumMatching() {
         // Hungarian algorithm implementation
         const n = Math.max(this.setASize, this.setBSize);
         const weights = Array(n).fill().map(() => Array(n).fill(-Infinity));
@@ -333,7 +393,6 @@ class BipartiteMatchingGame {
             }
         }
         
-        // Run Hungarian algorithm
         return this.hungarianAlgorithm(weights);
     }
 
@@ -428,8 +487,8 @@ class BipartiteMatchingGame {
             this.ctx.rotate(angle);
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
-            this.ctx.fillStyle = '#333';
-            this.ctx.font = '14px Arial';
+            this.ctx.fillStyle = edge.highlighted ? '#000' : '#666';
+            this.ctx.font = edge.highlighted ? 'bold 14px Arial' : '14px Arial';
             
             const totalWeight = (edge.weight1 + edge.weight2).toFixed(2);
             this.ctx.fillText(totalWeight, 0, -10);
@@ -460,7 +519,6 @@ class BipartiteMatchingGame {
 }
 
 // Initialize game when window loads
-let gameInstance = null;
-window.onload = () => {
-    gameInstance = new BipartiteMatchingGame();
-};
+window.addEventListener('load', () => {
+    new BipartiteMatchingGame();
+});
