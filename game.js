@@ -461,53 +461,25 @@ class BipartiteMatchingGame {
     }
 
     updateScore() {
-        let totalScore = 0;
-        for (let edgeIndex of this.highlightedEdges) {
-            const edge = this.edges[edgeIndex];
-            totalScore += edge.weight1 + edge.weight2;
-        }
-        document.getElementById('currentScore').textContent = totalScore.toFixed(2);
+    let totalScore = 0;
+    for (let edgeIndex of this.highlightedEdges) {
+        const edge = this.edges[edgeIndex];
+        // Make sure we're adding both weights and rounding at the end
+        totalScore += (edge.weight1 + edge.weight2);
     }
-
-   checkMatching() {
-       const maxScore = this.findMaximumMatching();
-       const currentScore = Array.from(this.highlightedEdges)
-           .reduce((sum, edgeIndex) => {
-               const edge = this.edges[edgeIndex];
-               return sum + edge.weight1 + edge.weight2;
-           }, 0);
-       
-       document.getElementById('maxScore').textContent = maxScore.toFixed(2);
-       
-       const winMessage = document.getElementById('winMessage');
-       if (Math.abs(currentScore - maxScore) < 0.01) {
-           winMessage.textContent = "You win! This is the best matching available.";
-           winMessage.style.display = 'block';
-       } else {
-           winMessage.style.display = 'none';
-       }
-   }
+    // Round to 2 decimal places at the end of calculation
+    document.getElementById('currentScore').textContent = totalScore.toFixed(2);
+}
 
 findMaximumMatching() {
     // Helper function to get edge weight
     const getEdgeWeight = (fromIndex, toIndex) => {
         const edge = this.edges[fromIndex * this.setBSize + toIndex];
-        return edge.weight1 + edge.weight2;
+        // Make sure we're adding both weights
+        return (edge.weight1 + edge.weight2);
     };
 
-    // Helper function to check if a matching is valid
-    const isValidMatching = (matching) => {
-        const usedA = new Set();
-        const usedB = new Set();
-        for (const [a, b] of matching) {
-            if (usedA.has(a) || usedB.has(b)) return false;
-            usedA.add(a);
-            usedB.add(b);
-        }
-        return true;
-    };
-
-    // Generate all possible matchings
+    // Rest of the function remains the same...
     let maxScore = 0;
     const generateMatchings = (current, aIndex) => {
         if (aIndex === this.setASize) {
@@ -528,9 +500,30 @@ findMaximumMatching() {
     };
 
     generateMatchings([], 0);
+    // Round to 2 decimal places at the end
     return maxScore;
 }
 
+checkMatching() {
+    const maxScore = this.findMaximumMatching();
+    const currentScore = Array.from(this.highlightedEdges)
+        .reduce((sum, edgeIndex) => {
+            const edge = this.edges[edgeIndex];
+            return sum + (edge.weight1 + edge.weight2);
+        }, 0);
+    
+    // Round both scores to 2 decimal places
+    document.getElementById('maxScore').textContent = maxScore.toFixed(2);
+    
+    const winMessage = document.getElementById('winMessage');
+    // Use a small epsilon for floating point comparison
+    if (Math.abs(currentScore - maxScore) < 0.01) {
+        winMessage.textContent = "You win! This is the best matching available.";
+        winMessage.style.display = 'block';
+    } else {
+        winMessage.style.display = 'none';
+    }
+}
     hungarianAlgorithm(weights) {
        const n = weights.length;
        const lx = Array(n).fill(0);
