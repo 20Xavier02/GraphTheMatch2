@@ -192,24 +192,67 @@ class BipartiteMatchingGame {
     return Number((Math.random() * 1.8 - 0.9).toFixed(2));
 }
 
-    getEventPos(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        let clientX, clientY;
-        
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-        
-        return {
-            x: clientX - rect.left,
-            y: clientY - rect.top
-        };
-    }
-
+    getEventPosition(e) {
+       const rect = this.canvas.getBoundingClientRect();
+       let clientX, clientY;
+       
+       if (e.touches && e.touches.length > 0) {
+           clientX = e.touches[0].clientX;
+           clientY = e.touches[0].clientY;
+       } else {
+           clientX = e.clientX;
+           clientY = e.clientY;
+       }
+       
+       return {
+           x: (clientX - rect.left) * (this.canvas.width / rect.width),
+           y: (clientY - rect.top) * (this.canvas.height / rect.height)
+       };
+   }
+   findClickedEdgeWeight(pos) {
+       for (let i = 0; i < this.edges.length; i++) {
+           const edge = this.edges[i];
+           const fromNode = this.nodes[edge.from.set][edge.from.index];
+           const toNode = this.nodes[edge.to.set][edge.to.index];
+           
+           // Calculate midpoint of the edge
+           const midX = (fromNode.x + toNode.x) / 2;
+           const midY = (fromNode.y + toNode.y) / 2;
+           
+           // Check if click is near the midpoint (weight location)
+           const dx = pos.x - midX;
+           const dy = pos.y - midY;
+           const distance = Math.sqrt(dx * dx + dy * dy);
+           
+           if (distance < 20) { // Adjust this value to change click sensitivity
+               return i;
+           }
+       }
+       return null;
+   }
+   findClickedNode(pos) {
+       // Check set A nodes
+       for (let i = 0; i < this.nodes.A.length; i++) {
+           const node = this.nodes.A[i];
+           const dx = node.x - pos.x;
+           const dy = node.y - pos.y;
+           if (dx * dx + dy * dy <= this.nodeRadius * this.nodeRadius) {
+               return node;
+           }
+       }
+       
+       // Check set B nodes
+       for (let i = 0; i < this.nodes.B.length; i++) {
+           const node = this.nodes.B[i];
+           const dx = node.x - pos.x;
+           const dy = node.y - pos.y;
+           if (dx * dx + dy * dy <= this.nodeRadius * this.nodeRadius) {
+               return node;
+           }
+       }
+       
+       return null;
+   }
     findNodeAtPosition(pos) {
         for (let i = 0; i < this.nodes.A.length; i++) {
             const node = this.nodes.A[i];
@@ -241,23 +284,32 @@ class BipartiteMatchingGame {
         }
         return -1;
     }
+   
    handleStart(e) {
        e.preventDefault();
        const pos = this.getEventPosition(e);
        
-       // Check for edge weight click/tap
+       // First check for edge click
+       const edgeIndex = this.findEdgeAtPosition(pos);
+       if (edgeIndex !== -1) {
+           if (this.canHighlightEdge(edgeIndex)) {
+               this.toggleEdgeHighlight(edgeIndex);
+           }
+           return;
+       }
+       
+       // Then check for weight edit
        const clickedEdge = this.findClickedEdgeWeight(pos);
        if (clickedEdge !== null) {
            this.startEdgeWeightEdit(clickedEdge, pos);
            return;
        }
        
-       // Handle node dragging
+       // Finally check for node drag
        const clickedNode = this.findClickedNode(pos);
        if (clickedNode) {
            this.isDragging = true;
            this.draggedNode = clickedNode;
-           // Store initial touch/click position for better mobile dragging
            this.lastDragPos = pos;
        }
    }
@@ -268,25 +320,19 @@ class BipartiteMatchingGame {
        
        const pos = this.getEventPosition(e);
        
-       // Calculate drag delta from last position
-       const dx = pos.x - (this.lastDragPos?.x || pos.x);
-       const dy = pos.y - (this.lastDragPos?.y || pos.y);
-       
-       // Update node position with the delta
-       this.draggedNode.x += dx;
-       this.draggedNode.y += dy;
-       
-       // Update last position
-       this.lastDragPos = pos;
+       // Update node position directly
+       this.draggedNode.x = pos.x;
+       this.draggedNode.y = pos.y;
        
        this.draw();
    }
 
     handleEnd(e) {
-        e.preventDefault();
-        this.isDragging = false;
-        this.draggedNode = null;
-    }
+       if (e) e.preventDefault();
+       this.isDragging = false;
+       this.draggedNode = null;
+       this.lastDragPos = null;
+   }
 
     handleGlobalClick(e) {
         if (this.isEditingWeight && !e.target.classList.contains('weight-input')) {
