@@ -285,28 +285,28 @@ class BipartiteMatchingGame {
 }
 
     handleWeightInputComplete(input) {
-    if (this.editingEdge !== null && input) {
-        let value = Number(input.value);
-        value = Math.max(-1, Math.min(1, value));
-        value = Number(value.toFixed(2));
-        
-        const edge = this.edges[this.editingEdge];
-        edge.weight1 = value / 2;
-        edge.weight2 = value / 2;
-        this.updateScore();
-        
-        // Reset max score display when weights change
-        document.getElementById('maxScore').textContent = '?';
-        const winMessage = document.getElementById('winMessage');
-        if (winMessage) {
-            winMessage.style.display = 'none';
-        }
-    }
-    this.removeWeightInput();
-    this.isEditingWeight = false;
-    this.editingEdge = null;
-    this.draw();
-}
+       if (this.editingEdge !== null && input) {
+           let value = Number(input.value);
+           value = Math.max(-1, Math.min(1, value));
+           value = Number(value.toFixed(2));
+           
+           const edge = this.edges[this.editingEdge];
+           edge.weight1 = value / 2;
+           edge.weight2 = value / 2;
+           this.updateScore();
+           
+           // Reset max score display when weights change
+           document.getElementById('maxScore').textContent = '?';
+           const winMessage = document.getElementById('winMessage');
+           if (winMessage) {
+               winMessage.style.display = 'none';
+           }
+       }
+       this.removeWeightInput();
+       this.isEditingWeight = false;
+       this.editingEdge = null;
+       this.draw();
+   }
 
     removeWeightInput() {
         const input = document.querySelector('.weight-input');
