@@ -241,48 +241,46 @@ class BipartiteMatchingGame {
         }
         return -1;
     }
-        handleStart(e) {
-        e.preventDefault();
-        const pos = this.getEventPos(e);
-        
-        // Check for node dragging
-        const node = this.findNodeAtPosition(pos);
-        if (node) {
-            this.isDragging = true;
-            this.draggedNode = node;
-            return;
-        }
-
-        // Check for edge interaction
-        const edgeIndex = this.findEdgeAtPosition(pos);
-        if (edgeIndex !== -1) {
-            const now = Date.now();
-            
-            if (now - this.lastTap < 300 && edgeIndex === this.lastEdgeClicked) {
-                // Double tap - edit weight
-                this.startEdgeWeightEdit(edgeIndex, pos);
-            } else {
-                // Single tap - toggle highlight
-                if (this.canHighlightEdge(edgeIndex)) {
-                    this.toggleEdgeHighlight(edgeIndex);
-                }
-            }
-            
-            this.lastTap = now;
-            this.lastEdgeClicked = edgeIndex;
-        }
-    }
+   handleStart(e) {
+       e.preventDefault();
+       const pos = this.getEventPosition(e);
+       
+       // Check for edge weight click/tap
+       const clickedEdge = this.findClickedEdgeWeight(pos);
+       if (clickedEdge !== null) {
+           this.startEdgeWeightEdit(clickedEdge, pos);
+           return;
+       }
+       
+       // Handle node dragging
+       const clickedNode = this.findClickedNode(pos);
+       if (clickedNode) {
+           this.isDragging = true;
+           this.draggedNode = clickedNode;
+           // Store initial touch/click position for better mobile dragging
+           this.lastDragPos = pos;
+       }
+   }
 
     handleMove(e) {
-        e.preventDefault();
-        if (this.isDragging && this.draggedNode) {
-            const pos = this.getEventPos(e);
-            const node = this.nodes[this.draggedNode.set][this.draggedNode.index];
-            node.x = Math.max(this.nodeRadius, Math.min(this.canvas.width - this.nodeRadius, pos.x));
-            node.y = Math.max(this.nodeRadius, Math.min(this.canvas.height - this.nodeRadius, pos.y));
-            this.draw();
-        }
-    }
+       if (!this.isDragging || !this.draggedNode) return;
+       e.preventDefault();
+       
+       const pos = this.getEventPosition(e);
+       
+       // Calculate drag delta from last position
+       const dx = pos.x - (this.lastDragPos?.x || pos.x);
+       const dy = pos.y - (this.lastDragPos?.y || pos.y);
+       
+       // Update node position with the delta
+       this.draggedNode.x += dx;
+       this.draggedNode.y += dy;
+       
+       // Update last position
+       this.lastDragPos = pos;
+       
+       this.draw();
+   }
 
     handleEnd(e) {
         e.preventDefault();
