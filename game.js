@@ -1,69 +1,71 @@
 class BipartiteMatchingGame {
-    constructor() {
-        this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        
-        // Game state
-        this.setASize = 2;  // Changed from 3
-        this.setBSize = 3;  // Changed from 4
-        this.nodeRadius = 20;
-        this.nodes = { A: [], B: [] };
-        this.edges = [];
-        this.highlightedEdges = new Set();
-        
-        // Interaction states
-        this.isDragging = false;
-        this.draggedNode = null;
-        this.isEditingWeight = false;
-        this.editingEdge = null;
-        this.lastTap = 0;
-        this.lastEdgeClicked = null;
-        
-        // Initialize game
-        this.resizeCanvas();
-        this.initializeGraph();
-        
-        // Create max score display
-        const scoreDisplay = document.querySelector('.score-display');
-        const maxScoreSpan = document.createElement('div');
-        maxScoreSpan.innerHTML = `Max Score: <span id="maxScore">?</span>`;
-        maxScoreSpan.style.marginTop = '5px';
-        scoreDisplay.appendChild(maxScoreSpan);
-        
-        const winMessageSpan = document.createElement('div');
-        winMessageSpan.id = 'winMessage';
-        winMessageSpan.style.color = '#4CAF50';
-        winMessageSpan.style.marginTop = '5px';
-        winMessageSpan.style.display = 'none';
-        scoreDisplay.appendChild(winMessageSpan);
-        
-        // Event listeners
-        window.addEventListener('resize', () => this.resizeCanvas());
-        
-        // Mouse events
-        this.canvas.addEventListener('mousedown', (e) => this.handleStart(e));
-        this.canvas.addEventListener('mousemove', (e) => this.handleMove(e));
-        this.canvas.addEventListener('mouseup', (e) => this.handleEnd(e));
-        
-        // Touch events
-        this.canvas.addEventListener('touchstart', (e) => this.handleStart(e));
-        this.canvas.addEventListener('touchmove', (e) => this.handleMove(e));
-        this.canvas.addEventListener('touchend', (e) => this.handleEnd(e));
-        this.canvas.addEventListener('touchcancel', (e) => this.handleEnd(e));
-        
-        // Global click/touch handler
-        document.addEventListener('click', (e) => this.handleGlobalClick(e));
-        document.addEventListener('touchend', (e) => this.handleGlobalClick(e));
-        
-        // Button handlers
-        document.getElementById('toggleInstructions').addEventListener('click', () => this.toggleInstructions());
-        document.getElementById('resetGraph').addEventListener('click', () => this.resetGraph());
-        document.getElementById('checkMatching').addEventListener('click', () => this.checkMatching());
-        
-        // Size input handlers
-        document.getElementById('setASize').addEventListener('change', (e) => this.handleSizeChange('A', e));
-        document.getElementById('setBSize').addEventListener('change', (e) => this.handleSizeChange('B', e));
+   constructor() {
+    this.canvas = document.getElementById('gameCanvas');
+    this.ctx = this.canvas.getContext('2d');
+    
+    // Game state
+    this.setASize = 2;
+    this.setBSize = 3;
+    this.nodeRadius = 20;
+    this.nodes = { A: [], B: [] };
+    this.edges = [];
+    this.highlightedEdges = new Set();
+    
+    // Interaction states
+    this.isDragging = false;
+    this.draggedNode = null;
+    this.isEditingWeight = false;
+    this.editingEdge = null;
+    this.lastTap = 0;
+    this.lastEdgeClicked = null;
+    
+    // Initialize game
+    this.resizeCanvas();
+    this.initializeGraph();
+    
+    // Create max score display
+    const scoreDisplay = document.querySelector('.score-display');
+    if (!document.getElementById('maxScore')) {
+        const maxScoreDiv = document.createElement('div');
+        maxScoreDiv.innerHTML = `Max Score: <span id="maxScore">?</span>`;
+        scoreDisplay.appendChild(maxScoreDiv);
     }
+    
+    // Create win message element
+    if (!document.getElementById('winMessage')) {
+        const winMessageDiv = document.createElement('div');
+        winMessageDiv.id = 'winMessage';
+        winMessageDiv.style.display = 'none';
+        scoreDisplay.appendChild(winMessageDiv);
+    }
+    
+    // Event listeners
+    window.addEventListener('resize', () => this.resizeCanvas());
+    
+    // Mouse events
+    this.canvas.addEventListener('mousedown', (e) => this.handleStart(e));
+    this.canvas.addEventListener('mousemove', (e) => this.handleMove(e));
+    this.canvas.addEventListener('mouseup', (e) => this.handleEnd(e));
+    
+    // Touch events
+    this.canvas.addEventListener('touchstart', (e) => this.handleStart(e));
+    this.canvas.addEventListener('touchmove', (e) => this.handleMove(e));
+    this.canvas.addEventListener('touchend', (e) => this.handleEnd(e));
+    this.canvas.addEventListener('touchcancel', (e) => this.handleEnd(e));
+    
+    // Global click/touch handler
+    document.addEventListener('click', (e) => this.handleGlobalClick(e));
+    document.addEventListener('touchend', (e) => this.handleGlobalClick(e));
+    
+    // Button handlers
+    document.getElementById('toggleInstructions').addEventListener('click', () => this.toggleInstructions());
+    document.getElementById('resetGraph').addEventListener('click', () => this.resetGraph());
+    document.getElementById('checkMatching').addEventListener('click', () => this.checkMatching());
+    
+    // Size input handlers
+    document.getElementById('setASize').addEventListener('change', (e) => this.handleSizeChange('A', e));
+    document.getElementById('setBSize').addEventListener('change', (e) => this.handleSizeChange('B', e));
+}
 
     resizeCanvas() {
         const container = document.getElementById('canvasContainer');
@@ -119,12 +121,13 @@ class BipartiteMatchingGame {
     }
 
     generateWeight() {
-        if (Math.random() < 0.375) {
-            // 37.5% chance of weight being close to 0
-            return Number((Math.random() * 0.2 - 0.1).toFixed(2));
-        }
-        return Number((Math.random() * 1.8 - 0.9).toFixed(2)); // Range: [-0.9, 0.9]
+    if (Math.random() < 0.375) {
+        // 37.5% chance of weight being close to 0
+        return Number((Math.random() * 0.2 - 0.1).toFixed(2));
     }
+    // Generate weight between -0.9 and 0.9 to avoid rounding issues
+    return Number((Math.random() * 1.8 - 0.9).toFixed(2));
+}
 
     getEventPos(e) {
         const rect = this.canvas.getBoundingClientRect();
@@ -231,66 +234,79 @@ class BipartiteMatchingGame {
     }
 
     startEdgeWeightEdit(edgeIndex, pos) {
+    if (this.isEditingWeight) {
+        return;
+    }
+
+    this.isEditingWeight = true;
+    this.editingEdge = edgeIndex;
+    
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.step = '0.1';
+    input.min = '-1';
+    input.max = '1';
+    input.classList.add('weight-input');
+    
+    const edge = this.edges[edgeIndex];
+    input.value = (edge.weight1 + edge.weight2).toFixed(2);
+    
+    // Position input over the edge weight
+    const rect = this.canvas.getBoundingClientRect();
+    input.style.position = 'absolute';
+    input.style.left = `${pos.x + rect.left - 30}px`;
+    input.style.top = `${pos.y + rect.top - 10}px`;
+    input.style.width = '60px';
+    input.style.zIndex = '1000';
+    
+    // Prevent immediate blur
+    input.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+    });
+    
+    input.addEventListener('blur', () => {
         if (this.isEditingWeight) {
-            return;
+            this.handleWeightInputComplete(input);
         }
+    });
+    
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            input.blur();
+        }
+        e.stopPropagation();
+    });
 
-        this.isEditingWeight = true;
-        this.editingEdge = edgeIndex;
-        
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.step = '0.1';
-        input.min = '-1';
-        input.max = '1';
-        input.classList.add('weight-input');
-        
-        const edge = this.edges[edgeIndex];
-        input.value = (edge.weight1 + edge.weight2).toFixed(2);
-        
-        const rect = this.canvas.getBoundingClientRect();
-        input.style.position = 'absolute';
-        input.style.left = `${pos.x + rect.left - 30}px`;
-        input.style.top = `${pos.y + rect.top - 10}px`;
-        
-        input.addEventListener('blur', () => {
-            if (this.isEditingWeight) {
-                this.handleWeightInputComplete(input);
-            }
-        });
-        
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                input.blur();
-            }
-            e.stopPropagation();
-        });
-
-        document.body.appendChild(input);
+    document.body.appendChild(input);
+    setTimeout(() => {
         input.focus();
         input.select();
-    }
+    }, 0);
+}
 
     handleWeightInputComplete(input) {
-        if (this.editingEdge !== null) {
-            let value = Number(input.value);
-            value = Math.max(-1, Math.min(1, value));
-            value = Number(value.toFixed(2));
-            
-            const edge = this.edges[this.editingEdge];
-            edge.weight1 = value / 2;
-            edge.weight2 = value / 2;
-            this.updateScore();
-            
-            // Reset max score display when weights change
-            document.getElementById('maxScore').textContent = '?';
-            document.getElementById('winMessage').style.display = 'none';
+    if (this.editingEdge !== null && input) {
+        let value = Number(input.value);
+        value = Math.max(-1, Math.min(1, value));
+        value = Number(value.toFixed(2));
+        
+        const edge = this.edges[this.editingEdge];
+        edge.weight1 = value / 2;
+        edge.weight2 = value / 2;
+        this.updateScore();
+        
+        // Reset max score display when weights change
+        document.getElementById('maxScore').textContent = '?';
+        const winMessage = document.getElementById('winMessage');
+        if (winMessage) {
+            winMessage.style.display = 'none';
         }
-        this.removeWeightInput();
-        this.isEditingWeight = false;
-        this.editingEdge = null;
-        this.draw();
     }
+    this.removeWeightInput();
+    this.isEditingWeight = false;
+    this.editingEdge = null;
+    this.draw();
+}
 
     removeWeightInput() {
         const input = document.querySelector('.weight-input');
@@ -345,8 +361,9 @@ class BipartiteMatchingGame {
         document.getElementById('currentScore').textContent = totalScore.toFixed(2);
     }
 
-    checkMatching() {
-        const maxScore = this.findMaximumMatching();
+   checkMatching() {
+    try {
+        const maxScore = Math.max(0, this.findMaximumMatching());
         const currentScore = Array.from(this.highlightedEdges)
             .reduce((sum, edgeIndex) => {
                 const edge = this.edges[edgeIndex];
@@ -355,14 +372,19 @@ class BipartiteMatchingGame {
         
         document.getElementById('maxScore').textContent = maxScore.toFixed(2);
         
-        const winMessage = document.getElementById('winMessage');
         if (Math.abs(currentScore - maxScore) < 0.01) {
-            winMessage.textContent = "You win! This is the best matching available.";
-            winMessage.style.display = 'block';
-        } else {
-            winMessage.style.display = 'none';
+            const winMessage = document.getElementById('winMessage');
+            if (winMessage) {
+                winMessage.textContent = "You win! This is the best matching available.";
+                winMessage.style.display = 'block';
+            } else {
+                alert("Correct! This is the maximum matching!");
+            }
         }
+    } catch (error) {
+        console.error('Error in checkMatching:', error);
     }
+}
 
     findMaximumMatching() {
         const n = Math.max(this.setASize, this.setBSize);
