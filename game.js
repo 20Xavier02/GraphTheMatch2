@@ -73,52 +73,107 @@ class BipartiteMatchingGame {
         this.canvas.height = container.offsetHeight;
         this.draw();
     }
-        initializeGraph() {
-        // Clear existing state
-        this.nodes = { A: [], B: [] };
-        this.edges = [];
-        this.highlightedEdges = new Set();
-
-        // Create nodes for set A
-        const ySpacingA = this.canvas.height / (this.setASize + 1);
-        for (let i = 0; i < this.setASize; i++) {
-            this.nodes.A.push({
-                x: this.canvas.width * 0.25,
-                y: ySpacingA * (i + 1),
-                label: `A${i + 1}`,
-                set: 'A'
-            });
-        }
-
-        // Create nodes for set B
-        const ySpacingB = this.canvas.height / (this.setBSize + 1);
-        for (let i = 0; i < this.setBSize; i++) {
-            this.nodes.B.push({
-                x: this.canvas.width * 0.75,
-                y: ySpacingB * (i + 1),
-                label: `B${i + 1}`,
-                set: 'B'
-            });
-        }
-
-        // Create edges with random weights
-        for (let i = 0; i < this.setASize; i++) {
-            for (let j = 0; j < this.setBSize; j++) {
-                const weight1 = this.generateWeight();
-                const weight2 = this.generateWeight();
-                this.edges.push({
-                    from: { set: 'A', index: i },
-                    to: { set: 'B', index: j },
-                    weight1: weight1,
-                    weight2: weight2,
-                    highlighted: false
-                });
-            }
-        }
-
-        this.updateScore();
-        this.draw();
-    }
+   
+     initializeGraph() {
+       const oldNodes = this.nodes;
+       const oldEdges = this.edges;
+       
+       // Initialize new arrays while preserving existing nodes
+       this.nodes = { 
+           A: oldNodes ? [...oldNodes.A] : [], 
+           B: oldNodes ? [...oldNodes.B] : [] 
+       };
+       this.edges = oldEdges ? [...oldEdges] : [];
+       
+       // Adjust set A (preserve existing nodes)
+       const ySpacingA = this.canvas.height / (this.setASize + 1);
+       if (this.nodes.A.length > this.setASize) {
+           // Remove excess nodes and their edges
+           const removedCount = this.nodes.A.length - this.setASize;
+           this.nodes.A.splice(this.setASize);
+           this.edges.splice(this.setASize * this.setBSize);
+       } else if (this.nodes.A.length < this.setASize) {
+           // Add new nodes and edges
+           for (let i = this.nodes.A.length; i < this.setASize; i++) {
+               // Add new node
+               this.nodes.A.push({
+                   x: this.canvas.width * 0.25,
+                   y: ySpacingA * (i + 1),
+                   label: `A${i + 1}`,
+                   set: 'A'
+               });
+               
+               // Add edges from this new node to all B nodes
+               for (let j = 0; j < this.setBSize; j++) {
+                   this.edges.push({
+                       from: { set: 'A', index: i },
+                       to: { set: 'B', index: j },
+                       weight1: this.generateWeight() / 2,
+                       weight2: this.generateWeight() / 2,
+                       highlighted: false
+                   });
+               }
+           }
+       }
+       
+       // Adjust set B (preserve existing nodes)
+       const ySpacingB = this.canvas.height / (this.setBSize + 1);
+       if (this.nodes.B.length > this.setBSize) {
+           // Remove excess nodes and their connected edges
+           this.nodes.B.splice(this.setBSize);
+           // Remove edges connected to removed B nodes
+           this.edges = this.edges.filter(edge => edge.to.index < this.setBSize);
+       } else if (this.nodes.B.length < this.setBSize) {
+           // Add new nodes and edges
+           for (let j = this.nodes.B.length; j < this.setBSize; j++) {
+               // Add new node
+               this.nodes.B.push({
+                   x: this.canvas.width * 0.75,
+                   y: ySpacingB * (j + 1),
+                   label: `B${j + 1}`,
+                   set: 'B'
+               });
+               
+               // Add edges from all A nodes to this new node
+               for (let i = 0; i < this.setASize; i++) {
+                   // Check if edge already exists
+                   const existingEdge = this.edges.find(e => 
+                       e.from.index === i && e.to.index === j);
+                   
+                   if (!existingEdge) {
+                       this.edges.push({
+                           from: { set: 'A', index: i },
+                           to: { set: 'B', index: j },
+                           weight1: this.generateWeight() / 2,
+                           weight2: this.generateWeight() / 2,
+                           highlighted: false
+                       });
+                   }
+               }
+           }
+       }
+       
+       // Reposition existing nodes with new spacing
+       this.nodes.A.forEach((node, i) => {
+           node.y = ySpacingA * (i + 1);
+       });
+       this.nodes.B.forEach((node, i) => {
+           node.y = ySpacingB * (i + 1);
+       });
+       
+       // Clear highlighted edges that might be invalid now
+       this.highlightedEdges = new Set(
+           Array.from(this.highlightedEdges).filter(edgeIndex => {
+               const edge = this.edges[edgeIndex];
+               return edge && 
+                      edge.from.index < this.setASize && 
+                      edge.to.index < this.setBSize;
+           })
+       );
+       
+       this.updateScore();
+       this.draw();
+   }
 
     generateWeight() {
     if (Math.random() < 0.375) {
