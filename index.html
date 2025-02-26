@@ -1,66 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bipartite Matching Game</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Graph The Match!</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
 <body>
     <div class="controls">
         <button id="toggleInstructions">Instructions</button>
         <button id="resetGraph">Reset</button>
         <button id="checkMatching">Check</button>
-        <label>
-            Set A Size:
-            <input type="number" id="setASize" min="1" max="10" value="2">
-        </label>
-        <label>
-            Set B Size:
-            <input type="number" id="setBSize" min="1" max="10" value="3">
-        </label>
+        <label>Set A Size: <input type="number" id="setASize" min="2" max="4" value="2"></label>
+        <label>Set B Size: <input type="number" id="setBSize" min="2" max="5" value="3"></label>
     </div>
 
     <div class="score-display">
-        <div>Current Score: <span id="currentScore">0.00</span></div>
-        <div>Max Score: <span id="maxScore">?</span></div>
-        <div id="winMessage" style="display: none;"></div>
+        <div class="score-item">
+            Current Score: <span id="currentScore">0.00</span>
+        </div>
+        <div class="score-item">
+            Max Score: <span id="maxScore">?</span>
+        </div>
     </div>
+    <div id="winMessage" style="display: none;"></div>
 
     <div id="canvasContainer">
         <canvas id="gameCanvas"></canvas>
         <div class="instructions-overlay">
             <div class="instructions-content">
-                <h2>How to Play</h2>
-                <p>Welcome to the Bipartite Matching Game! Your goal is to find the maximum-weight matching in a bipartite graph.</p>
-                
-                <h3>Rules:</h3>
+                <h2>Instructions</h2>
+                <p>Welcome to Graph The Match! Your goal is to find the maximum weighted matching in a bipartite graph.</p>
                 <ul>
-                    <li>Click on edges to highlight them and add them to your matching</li>
-                    <li>Double-click on edge weights to edit them (values between -1 and 1)</li>
-                    <li>Each node can only be used once in a matching</li>
-                    <li>Try to maximize the total weight of your matching</li>
+                    <li>Click and drag nodes to move them around</li>
+                    <li>Click on edges to highlight/unhighlight them</li>
+                    <li>Click on edge weights to edit them</li>
+                    <li>Use the Check button to verify if your matching is optimal</li>
+                    <li>Use Reset to start over with new random weights</li>
                 </ul>
-
-                <h3>Controls:</h3>
-                <ul>
-                    <li>Single click/tap: Toggle edge highlight</li>
-                    <li>Double click/tap: Edit edge weight</li>
-                    <li>Drag nodes: Rearrange the graph layout</li>
-                    <li>Reset button: Generate a new random graph</li>
-                    <li>Check button: Verify if your matching is optimal</li>
-                </ul>
-
-                <h3>Scoring:</h3>
-                <ul>
-                    <li>Each edge has a weight between -1 and 1</li>
-                    <li>Your score is the sum of weights of highlighted edges</li>
-                    <li>Try to find the matching with the highest possible score!</li>
-                </ul>
+                <button id="closeInstructions">Close</button>
             </div>
         </div>
     </div>
-
     <script src="game.js"></script>
 </body>
 </html>
