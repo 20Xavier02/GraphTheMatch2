@@ -253,40 +253,35 @@ class BipartiteMatchingGame {
        input.style.left = `${pos.x + rect.left - 30}px`;
        input.style.top = `${pos.y + rect.top - 10}px`;
        
-       input.addEventListener('mousedown', (e) => e.stopPropagation());
-       input.addEventListener('touchstart', (e) => e.stopPropagation());
-       input.addEventListener('touchend', (e) => e.stopPropagation());
-       
-       input.addEventListener('keydown', (e) => {
-           e.stopPropagation();
-           if (e.key === 'Enter') {
+       // Handle all input events
+       const completeEdit = () => {
+           if (this.isEditingWeight) {
                this.handleWeightInputComplete(input);
-           }
-       });
-   
-       document.body.appendChild(input);
-       
-       setTimeout(() => {
-           input.focus();
-           input.setSelectionRange(0, input.value.length);
-       }, 50);
-   
-       // Handle click/touch outside
-       const handleOutside = (e) => {
-           if (!input.contains(e.target)) {
-               this.handleWeightInputComplete(input);
-               document.removeEventListener('mousedown', handleOutside);
-               document.removeEventListener('touchstart', handleOutside);
            }
        };
    
+       input.addEventListener('blur', completeEdit);
+       input.addEventListener('keydown', (e) => {
+           if (e.key === 'Enter') {
+               completeEdit();
+               e.preventDefault();
+           }
+       });
+   
+       // Prevent bubbling for touch events
+       input.addEventListener('touchstart', (e) => e.stopPropagation());
+       input.addEventListener('touchend', (e) => e.stopPropagation());
+       input.addEventListener('touchmove', (e) => e.stopPropagation());
+       input.addEventListener('mousedown', (e) => e.stopPropagation());
+   
+       document.body.appendChild(input);
        setTimeout(() => {
-           document.addEventListener('mousedown', handleOutside);
-           document.addEventListener('touchstart', handleOutside);
-       }, 100);
+           input.focus();
+           input.select();
+       }, 50);
    }
-
-    handleWeightInputComplete(input) {
+   
+   handleWeightInputComplete(input) {
        if (this.editingEdge !== null && input) {
            let value = parseFloat(input.value);
            
@@ -301,17 +296,18 @@ class BipartiteMatchingGame {
            edge.weight1 = value / 2;
            edge.weight2 = value / 2;
            
-           // Update both scores immediately
            this.updateScore();
-           const maxScore = this.findMaximumMatching();
-           document.getElementById('maxScore').textContent = maxScore.toFixed(2);
        }
        
-       this.removeWeightInput();
+       // Remove input and reset state
+       if (input && input.parentNode) {
+           input.parentNode.removeChild(input);
+       }
        this.isEditingWeight = false;
        this.editingEdge = null;
        this.draw();
    }
+
 
     removeWeightInput() {
         const input = document.querySelector('.weight-input');
@@ -367,52 +363,73 @@ class BipartiteMatchingGame {
     }
 
    checkMatching() {
-    try {
-        const maxScore = Math.max(0, this.findMaximumMatching());
-        const currentScore = Array.from(this.highlightedEdges)
-            .reduce((sum, edgeIndex) => {
-                const edge = this.edges[edgeIndex];
-                return sum + edge.weight1 + edge.weight2;
-            }, 0);
+       const maxScore = this.findMaximumMatching();
+       const currentScore = Array.from(this.highlightedEdges)
+           .reduce((sum, edgeIndex) => {
+               const edge = this.edges[edgeIndex];
+               return sum + edge.weight1 + edge.weight2;
+           }, 0);
+       
+       document.getElementById('maxScore').textContent = maxScore.toFixed(2);
+       
+       const winMessage = document.getElementById('winMessage');
+       if (Math.abs(currentScore - maxScore) < 0.01) {
+           winMessage.textContent = "You win! This is the best matching available.";
+           winMessage.style.display = 'block';
+       } else {
+           winMessage.style.display = 'none';
+       }
+   }
+
+findMaximumMatching() {
+    let maxScore = -Infinity;
+    
+    // For 2x3 graph
+    if (this.setASize === 2) {
+        // Try all possible combinations for 2 nodes
+        for (let i = 0; i < this.setBSize; i++) {
+            const weight1 = this.edges[i].weight1 + this.edges[i].weight2;
+            
+            // Try pairing with each possible second edge
+            for (let j = 0; j < this.setBSize; j++) {
+                if (j === i) continue; // Skip if same B node
+                
+                const weight2 = this.edges[this.setBSize + j].weight1 + 
+                               this.edges[this.setBSize + j].weight2;
+                maxScore = Math.max(maxScore, weight1 + weight2);
+            }
+            
+            // Also try using just this edge alone
+            maxScore = Math.max(maxScore, weight1);
+        }
         
-        document.getElementById('maxScore').textContent = maxScore.toFixed(2);
-        
-        if (Math.abs(currentScore - maxScore) < 0.01) {
-            const winMessage = document.getElementById('winMessage');
-            if (winMessage) {
-                winMessage.textContent = "You win! This is the best matching available.";
-                winMessage.style.display = 'block';
-            } else {
-                alert("Correct! This is the maximum matching!");
+        // Try edges from second A node alone
+        for (let j = 0; j < this.setBSize; j++) {
+            const weight2 = this.edges[this.setBSize + j].weight1 + 
+                           this.edges[this.setBSize + j].weight2;
+            maxScore = Math.max(maxScore, weight2);
+        }
+    }
+    // For 3x3 graph
+    else if (this.setASize === 3) {
+        for (let i = 0; i < this.setBSize; i++) {
+            for (let j = 0; j < this.setBSize; j++) {
+                if (j === i) continue;
+                for (let k = 0; k < this.setBSize; k++) {
+                    if (k === i || k === j) continue;
+                    
+                    const score = 
+                        (this.edges[i].weight1 + this.edges[i].weight2) +
+                        (this.edges[this.setBSize + j].weight1 + this.edges[this.setBSize + j].weight2) +
+                        (this.edges[2 * this.setBSize + k].weight1 + this.edges[2 * this.setBSize + k].weight2);
+                    maxScore = Math.max(maxScore, score);
+                }
             }
         }
-    } catch (error) {
-        console.error('Error in checkMatching:', error);
     }
+    
+    return Math.max(0, maxScore);
 }
-
-   findMaximumMatching() {
-       let maxScore = -Infinity;
-       const edges = this.edges;
-       
-       // Try all possible combinations of edges
-       for (let i = 0; i < this.setBSize; i++) {
-           for (let j = 0; j < this.setBSize; j++) {
-               if (j === i) continue;
-               for (let k = 0; k < this.setBSize; k++) {
-                   if (k === i || k === j) continue;
-                   
-                   const score = 
-                       (edges[i].weight1 + edges[i].weight2) +
-                       (edges[this.setBSize + j].weight1 + edges[this.setBSize + j].weight2) +
-                       (edges[2 * this.setBSize + k].weight1 + edges[2 * this.setBSize + k].weight2);
-                   maxScore = Math.max(maxScore, score);
-               }
-           }
-       }
-       
-       return maxScore;
-   }
 
     hungarianAlgorithm(weights) {
        const n = weights.length;
