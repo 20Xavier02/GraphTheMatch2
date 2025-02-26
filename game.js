@@ -291,15 +291,30 @@ class BipartiteMatchingGame {
            const edge = this.edges[this.editingEdge];
            edge.weight1 = value / 2;
            edge.weight2 = value / 2;
-           this.updateScore();
            
-           // Reset max score display when weights change
-           document.getElementById('maxScore').textContent = '?';
+           // Update both current score and max score
+           this.updateScore();
+           const maxScore = this.findMaximumMatching();
+           document.getElementById('maxScore').textContent = maxScore.toFixed(2);
+           
+           // Update win message if current score matches max score
+           const currentScore = Array.from(this.highlightedEdges)
+               .reduce((sum, edgeIndex) => {
+                   const edge = this.edges[edgeIndex];
+                   return sum + edge.weight1 + edge.weight2;
+               }, 0);
+               
            const winMessage = document.getElementById('winMessage');
            if (winMessage) {
-               winMessage.style.display = 'none';
+               if (Math.abs(currentScore - maxScore) < 0.01) {
+                   winMessage.textContent = "You win! This is the best matching available.";
+                   winMessage.style.display = 'block';
+               } else {
+                   winMessage.style.display = 'none';
+               }
            }
        }
+       
        this.removeWeightInput();
        this.isEditingWeight = false;
        this.editingEdge = null;
