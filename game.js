@@ -233,56 +233,56 @@ class BipartiteMatchingGame {
         }
     }
 
-    startEdgeWeightEdit(edgeIndex, pos) {
-    if (this.isEditingWeight) {
-        return;
-    }
-
-    this.isEditingWeight = true;
-    this.editingEdge = edgeIndex;
-    
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.step = '0.1';
-    input.min = '-1';
-    input.max = '1';
-    input.classList.add('weight-input');
-    
-    const edge = this.edges[edgeIndex];
-    input.value = (edge.weight1 + edge.weight2).toFixed(2);
-    
-    // Position input over the edge weight
-    const rect = this.canvas.getBoundingClientRect();
-    input.style.position = 'absolute';
-    input.style.left = `${pos.x + rect.left - 30}px`;
-    input.style.top = `${pos.y + rect.top - 10}px`;
-    input.style.width = '60px';
-    input.style.zIndex = '1000';
-    
-    // Prevent immediate blur
-    input.addEventListener('mousedown', (e) => {
-        e.stopPropagation();
-    });
-    
-    input.addEventListener('blur', () => {
-        if (this.isEditingWeight) {
-            this.handleWeightInputComplete(input);
-        }
-    });
-    
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            input.blur();
-        }
-        e.stopPropagation();
-    });
-
-    document.body.appendChild(input);
-    setTimeout(() => {
-        input.focus();
-        input.select();
-    }, 0);
-}
+   startEdgeWeightEdit(edgeIndex, pos) {
+       if (this.isEditingWeight) {
+           return;
+       }
+   
+       this.isEditingWeight = true;
+       this.editingEdge = edgeIndex;
+       
+       const input = document.createElement('input');
+       input.type = 'number';
+       input.step = '0.1';
+       input.min = '-1';
+       input.max = '1';
+       input.classList.add('weight-input');
+       
+       const edge = this.edges[edgeIndex];
+       input.value = (edge.weight1 + edge.weight2).toFixed(2);
+       
+       const rect = this.canvas.getBoundingClientRect();
+       input.style.position = 'absolute';
+       input.style.left = `${pos.x + rect.left - 30}px`;
+       input.style.top = `${pos.y + rect.top - 10}px`;
+       
+       // Prevent event propagation
+       input.addEventListener('mousedown', (e) => {
+           e.stopPropagation();
+       });
+       
+       input.addEventListener('click', (e) => {
+           e.stopPropagation();
+       });
+       
+       input.addEventListener('keydown', (e) => {
+           e.stopPropagation();
+           if (e.key === 'Enter') {
+               this.handleWeightInputComplete(input);
+           }
+       });
+       
+       // Use mousedown instead of blur
+       document.addEventListener('mousedown', (e) => {
+           if (!input.contains(e.target)) {
+               this.handleWeightInputComplete(input);
+           }
+       }, { once: true });
+   
+       document.body.appendChild(input);
+       input.focus();
+       input.select();
+   }
 
     handleWeightInputComplete(input) {
        if (this.editingEdge !== null && input) {
@@ -401,63 +401,78 @@ class BipartiteMatchingGame {
     }
 
     hungarianAlgorithm(weights) {
-        const n = weights.length;
-        const u = Array(n).fill(0);
-        const v = Array(n).fill(0);
-        const match = Array(n).fill(-1);
-        
-        for (let i = 0; i < n; i++) {
-            const links = Array(n).fill(0);
-            const mins = Array(n).fill(Infinity);
-            const visited = Array(n).fill(false);
-            let markedI = i, markedJ = -1, j;
-            
-            while (markedI !== -1) {
-                j = -1;
-                for (let j2 = 0; j2 < n; j2++) {
-                    if (!visited[j2]) {
-                        const cur = weights[markedI][j2] - u[markedI] - v[j2];
-                        if (cur > mins[j2]) {
-                            mins[j2] = cur;
-                            links[j2] = markedJ;
-                        }
-                        if (j === -1 || mins[j2] > mins[j]) {
-                            j = j2;
-                        }
-                    }
-                }
-                
-                const delta = mins[j];
-                for (let j2 = 0; j2 < n; j2++) {
-                    if (visited[j2]) {
-                        u[links[j2]] += delta;
-                        v[j2] -= delta;
-                    } else {
-                        mins[j2] -= delta;
-                    }
-                }
-                u[i] += delta;
-                
-                visited[j] = true;
-                markedJ = j;
-                markedI = match[j];
-            }
-            
-            while (markedJ !== -1) {
-                const markedI = links[markedJ];
-                match[markedJ] = markedI;
-                markedJ = links[markedJ];
-            }
-        }
-        
-        let maxScore = 0;
-        for (let j = 0; j < n; j++) {
-            if (match[j] !== -1 && match[j] < this.setASize && j < this.setBSize) {
-                maxScore += weights[match[j]][j];
-            }
-        }
-        return maxScore;
+    const n = weights.length;
+    const lx = Array(n).fill(0);
+    const ly = Array(n).fill(0);
+    const match = Array(n).fill(-1);
+    
+    // Initialize lx with maximum weights from each row
+    for (let i = 0; i < n; i++) {
+        lx[i] = Math.max(...weights[i]);
     }
+    
+    for (let k = 0; k < n; k++) {
+        let p = Array(n).fill(-1);
+        let used = Array(n).fill(false);
+        
+        let j1 = 0;
+        while (j1 < n) {
+            if (match[j1] === -1) break;
+            j1++;
+        }
+        if (j1 >= n) continue;
+        
+        let queue = [j1];
+        used[j1] = true;
+        let j2;
+        
+        do {
+            j2 = -1;
+            j1 = queue[queue.length - 1];
+            let delta = Infinity;
+            
+            for (let j = 0; j < n; j++) {
+                if (!used[j]) {
+                    let cur = lx[k] + ly[j] - weights[k][j];
+                    if (cur < delta) {
+                        delta = cur;
+                        j2 = j;
+                    }
+                }
+            }
+            
+            if (j2 !== -1) {
+                if (delta > 0) {
+                    for (let j = 0; j < n; j++) {
+                        if (used[j]) ly[j] -= delta;
+                    }
+                    lx[k] += delta;
+                }
+                queue.push(j2);
+                used[j2] = true;
+                p[j2] = j1;
+            }
+        } while (j2 !== -1 && match[j2] === -1);
+        
+        if (j2 !== -1) {
+            let cur = j2;
+            while (cur !== -1) {
+                let prev = p[cur];
+                let next = match[prev];
+                match[cur] = k;
+                cur = next;
+            }
+        }
+    }
+    
+    let maxScore = 0;
+    for (let j = 0; j < n; j++) {
+        if (match[j] !== -1 && match[j] < this.setASize && j < this.setBSize) {
+            maxScore += weights[match[j]][j];
+        }
+    }
+    return maxScore;
+}
 
     resetGraph() {
         this.initializeGraph();
