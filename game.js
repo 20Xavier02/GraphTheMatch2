@@ -256,7 +256,6 @@ class BipartiteMatchingGame {
        input.style.left = `${pos.x + rect.left - 30}px`;
        input.style.top = `${pos.y + rect.top - 10}px`;
        
-       // Prevent event propagation
        input.addEventListener('mousedown', (e) => {
            e.stopPropagation();
        });
@@ -266,22 +265,21 @@ class BipartiteMatchingGame {
        });
        
        input.addEventListener('keydown', (e) => {
-           e.stopPropagation();
            if (e.key === 'Enter') {
                this.handleWeightInputComplete(input);
            }
+           e.stopPropagation();
        });
        
-       // Use mousedown instead of blur
-       document.addEventListener('mousedown', (e) => {
-           if (!input.contains(e.target)) {
-               this.handleWeightInputComplete(input);
-           }
-       }, { once: true });
+       input.addEventListener('blur', () => {
+           this.handleWeightInputComplete(input);
+       });
    
        document.body.appendChild(input);
-       input.focus();
-       input.select();
+       setTimeout(() => {
+           input.focus();
+           input.select();
+       }, 50);
    }
 
     handleWeightInputComplete(input) {
@@ -388,35 +386,31 @@ class BipartiteMatchingGame {
 
     findMaximumMatching() {
        let maxScore = -Infinity;
+       const edges = this.edges;
        
-       // Try each possible valid matching
+       // Try all possible combinations of edges from A1 and A2
        for (let i = 0; i < this.setBSize; i++) {
-           const edge1 = this.edges[i];
-           const weight1 = edge1.weight1 + edge1.weight2;
+           // Weight if we only use this edge from A1
+           const weightA1 = edges[i].weight1 + edges[i].weight2;
+           maxScore = Math.max(maxScore, weightA1);
            
-           // Try matching second node or leave it unmatched
-           let bestSecondWeight = 0; // Allow for single edge if better
+           // Try combining with an edge from A2
            for (let j = 0; j < this.setBSize; j++) {
-               if (i === j) continue; // Can't use same B node
+               if (j === i) continue; // Skip if same B node
                
-               const edge2 = this.edges[this.setBSize + j];
-               const weight2 = edge2.weight1 + edge2.weight2;
-               bestSecondWeight = Math.max(bestSecondWeight, weight2);
+               const weightA2 = edges[this.setBSize + j].weight1 + edges[this.setBSize + j].weight2;
+               maxScore = Math.max(maxScore, weightA1 + weightA2);
            }
-           
-           maxScore = Math.max(maxScore, weight1, weight1 + bestSecondWeight);
        }
        
-       // Also try starting with second A node
+       // Also try edges from A2 alone
        for (let j = 0; j < this.setBSize; j++) {
-           const edge2 = this.edges[this.setBSize + j];
-           const weight2 = edge2.weight1 + edge2.weight2;
-           maxScore = Math.max(maxScore, weight2);
+           const weightA2 = edges[this.setBSize + j].weight1 + edges[this.setBSize + j].weight2;
+           maxScore = Math.max(maxScore, weightA2);
        }
        
-       return Math.max(0, maxScore); // Don't allow negative scores
+       return maxScore;
    }
-
     hungarianAlgorithm(weights) {
        const n = weights.length;
        const lx = Array(n).fill(0);
