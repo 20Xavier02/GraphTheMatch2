@@ -437,53 +437,46 @@ class BipartiteMatchingGame {
    }
 
 findMaximumMatching() {
-    let maxScore = -Infinity;
-    
-    // For 2x3 graph
-    if (this.setASize === 2) {
-        // Try all possible combinations for 2 nodes
-        for (let i = 0; i < this.setBSize; i++) {
-            const weight1 = this.edges[i].weight1 + this.edges[i].weight2;
-            
-            // Try pairing with each possible second edge
-            for (let j = 0; j < this.setBSize; j++) {
-                if (j === i) continue; // Skip if same B node
-                
-                const weight2 = this.edges[this.setBSize + j].weight1 + 
-                               this.edges[this.setBSize + j].weight2;
-                maxScore = Math.max(maxScore, weight1 + weight2);
+    // Helper function to get edge weight
+    const getEdgeWeight = (fromIndex, toIndex) => {
+        const edge = this.edges[fromIndex * this.setBSize + toIndex];
+        return edge.weight1 + edge.weight2;
+    };
+
+    // Helper function to check if a matching is valid
+    const isValidMatching = (matching) => {
+        const usedA = new Set();
+        const usedB = new Set();
+        for (const [a, b] of matching) {
+            if (usedA.has(a) || usedB.has(b)) return false;
+            usedA.add(a);
+            usedB.add(b);
+        }
+        return true;
+    };
+
+    // Generate all possible matchings
+    let maxScore = 0;
+    const generateMatchings = (current, aIndex) => {
+        if (aIndex === this.setASize) {
+            if (isValidMatching(current)) {
+                const score = current.reduce((sum, [a, b]) => 
+                    sum + getEdgeWeight(a, b), 0);
+                maxScore = Math.max(maxScore, score);
             }
-            
-            // Also try using just this edge alone
-            maxScore = Math.max(maxScore, weight1);
+            return;
         }
-        
-        // Try edges from second A node alone
-        for (let j = 0; j < this.setBSize; j++) {
-            const weight2 = this.edges[this.setBSize + j].weight1 + 
-                           this.edges[this.setBSize + j].weight2;
-            maxScore = Math.max(maxScore, weight2);
+
+        // Try matching current A node with each B node
+        for (let b = 0; b < this.setBSize; b++) {
+            generateMatchings([...current, [aIndex, b]], aIndex + 1);
         }
-    }
-    // For 3x3 graph
-    else if (this.setASize === 3) {
-        for (let i = 0; i < this.setBSize; i++) {
-            for (let j = 0; j < this.setBSize; j++) {
-                if (j === i) continue;
-                for (let k = 0; k < this.setBSize; k++) {
-                    if (k === i || k === j) continue;
-                    
-                    const score = 
-                        (this.edges[i].weight1 + this.edges[i].weight2) +
-                        (this.edges[this.setBSize + j].weight1 + this.edges[this.setBSize + j].weight2) +
-                        (this.edges[2 * this.setBSize + k].weight1 + this.edges[2 * this.setBSize + k].weight2);
-                    maxScore = Math.max(maxScore, score);
-                }
-            }
-        }
-    }
-    
-    return Math.max(0, maxScore);
+        // Try not matching current A node
+        generateMatchings([...current], aIndex + 1);
+    };
+
+    generateMatchings([], 0);
+    return maxScore;
 }
 
     hungarianAlgorithm(weights) {
@@ -561,10 +554,54 @@ findMaximumMatching() {
    }
 
     resetGraph() {
-        this.initializeGraph();
-        document.getElementById('maxScore').textContent = '?';
-        document.getElementById('winMessage').style.display = 'none';
-    }
+       // Clear existing state
+       this.nodes = { A: [], B: [] };
+       this.edges = [];
+       this.highlightedEdges = new Set();
+       
+       // Create nodes for set A with original positions
+       const ySpacingA = this.canvas.height / (this.setASize + 1);
+       for (let i = 0; i < this.setASize; i++) {
+           this.nodes.A.push({
+               x: this.canvas.width * 0.25, // Fixed left position
+               y: ySpacingA * (i + 1),
+               label: `A${i + 1}`,
+               set: 'A'
+           });
+       }
+   
+       // Create nodes for set B with original positions
+       const ySpacingB = this.canvas.height / (this.setBSize + 1);
+       for (let i = 0; i < this.setBSize; i++) {
+           this.nodes.B.push({
+               x: this.canvas.width * 0.75, // Fixed right position
+               y: ySpacingB * (i + 1),
+               label: `B${i + 1}`,
+               set: 'B'
+           });
+       }
+   
+       // Create edges with new random weights
+       for (let i = 0; i < this.setASize; i++) {
+           for (let j = 0; j < this.setBSize; j++) {
+               const weight1 = this.generateWeight();
+               const weight2 = this.generateWeight();
+               this.edges.push({
+                   from: { set: 'A', index: i },
+                   to: { set: 'B', index: j },
+                   weight1: weight1 / 2,
+                   weight2: weight2 / 2,
+                   highlighted: false
+               });
+           }
+       }
+   
+       // Reset scores and messages
+       document.getElementById('maxScore').textContent = '?';
+       document.getElementById('winMessage').style.display = 'none';
+       this.updateScore();
+       this.draw();
+   }
 
     handleSizeChange(set, e) {
         const value = parseInt(e.target.value);
