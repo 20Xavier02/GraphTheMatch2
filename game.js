@@ -387,92 +387,109 @@ class BipartiteMatchingGame {
 }
 
     findMaximumMatching() {
-        const n = Math.max(this.setASize, this.setBSize);
-        const weights = Array(n).fill().map(() => Array(n).fill(-Infinity));
-        
-        for (let i = 0; i < this.setASize; i++) {
-            for (let j = 0; j < this.setBSize; j++) {
-                const edgeIndex = i * this.setBSize + j;
-                weights[i][j] = this.edges[edgeIndex].weight1 + this.edges[edgeIndex].weight2;
-            }
-        }
-        
-        return Math.max(0, this.hungarianAlgorithm(weights));
-    }
+       let maxScore = -Infinity;
+       
+       // Try each possible valid matching
+       for (let i = 0; i < this.setBSize; i++) {
+           const edge1 = this.edges[i];
+           const weight1 = edge1.weight1 + edge1.weight2;
+           
+           // Try matching second node or leave it unmatched
+           let bestSecondWeight = 0; // Allow for single edge if better
+           for (let j = 0; j < this.setBSize; j++) {
+               if (i === j) continue; // Can't use same B node
+               
+               const edge2 = this.edges[this.setBSize + j];
+               const weight2 = edge2.weight1 + edge2.weight2;
+               bestSecondWeight = Math.max(bestSecondWeight, weight2);
+           }
+           
+           maxScore = Math.max(maxScore, weight1, weight1 + bestSecondWeight);
+       }
+       
+       // Also try starting with second A node
+       for (let j = 0; j < this.setBSize; j++) {
+           const edge2 = this.edges[this.setBSize + j];
+           const weight2 = edge2.weight1 + edge2.weight2;
+           maxScore = Math.max(maxScore, weight2);
+       }
+       
+       return Math.max(0, maxScore); // Don't allow negative scores
+   }
 
     hungarianAlgorithm(weights) {
-    const n = weights.length;
-    const lx = Array(n).fill(0);
-    const ly = Array(n).fill(0);
-    const match = Array(n).fill(-1);
-    
-    // Initialize lx with maximum weights from each row
-    for (let i = 0; i < n; i++) {
-        lx[i] = Math.max(...weights[i]);
-    }
-    
-    for (let k = 0; k < n; k++) {
-        let p = Array(n).fill(-1);
-        let used = Array(n).fill(false);
-        
-        let j1 = 0;
-        while (j1 < n) {
-            if (match[j1] === -1) break;
-            j1++;
-        }
-        if (j1 >= n) continue;
-        
-        let queue = [j1];
-        used[j1] = true;
-        let j2;
-        
-        do {
-            j2 = -1;
-            j1 = queue[queue.length - 1];
-            let delta = Infinity;
-            
-            for (let j = 0; j < n; j++) {
-                if (!used[j]) {
-                    let cur = lx[k] + ly[j] - weights[k][j];
-                    if (cur < delta) {
-                        delta = cur;
-                        j2 = j;
-                    }
-                }
-            }
-            
-            if (j2 !== -1) {
-                if (delta > 0) {
-                    for (let j = 0; j < n; j++) {
-                        if (used[j]) ly[j] -= delta;
-                    }
-                    lx[k] += delta;
-                }
-                queue.push(j2);
-                used[j2] = true;
-                p[j2] = j1;
-            }
-        } while (j2 !== -1 && match[j2] === -1);
-        
-        if (j2 !== -1) {
-            let cur = j2;
-            while (cur !== -1) {
-                let prev = p[cur];
-                let next = match[prev];
-                match[cur] = k;
-                cur = next;
-            }
-        }
-    }
-    
-    let maxScore = 0;
-    for (let j = 0; j < n; j++) {
-        if (match[j] !== -1 && match[j] < this.setASize && j < this.setBSize) {
-            maxScore += weights[match[j]][j];
-        }
-    }
-    return maxScore;
-}
+       const n = weights.length;
+       const lx = Array(n).fill(0);
+       const ly = Array(n).fill(0);
+       const match = Array(n).fill(-1);
+       
+       // Initialize lx with maximum weights from each row
+       for (let i = 0; i < n; i++) {
+           lx[i] = Math.max(...weights[i]);
+       }
+       
+       for (let k = 0; k < n; k++) {
+           let p = Array(n).fill(-1);
+           let used = Array(n).fill(false);
+           
+           let j1 = 0;
+           while (j1 < n) {
+               if (match[j1] === -1) break;
+               j1++;
+           }
+           if (j1 >= n) continue;
+           
+           let queue = [j1];
+           used[j1] = true;
+           let j2;
+           
+           do {
+               j2 = -1;
+               j1 = queue[queue.length - 1];
+               let delta = Infinity;
+               
+               for (let j = 0; j < n; j++) {
+                   if (!used[j]) {
+                       let cur = lx[k] + ly[j] - weights[k][j];
+                       if (cur < delta) {
+                           delta = cur;
+                           j2 = j;
+                       }
+                   }
+               }
+               
+               if (j2 !== -1) {
+                   if (delta > 0) {
+                       for (let j = 0; j < n; j++) {
+                           if (used[j]) ly[j] -= delta;
+                       }
+                       lx[k] += delta;
+                   }
+                   queue.push(j2);
+                   used[j2] = true;
+                   p[j2] = j1;
+               }
+           } while (j2 !== -1 && match[j2] === -1);
+           
+           if (j2 !== -1) {
+               let cur = j2;
+               while (cur !== -1) {
+                   let prev = p[cur];
+                   let next = match[prev];
+                   match[cur] = k;
+                   cur = next;
+               }
+           }
+       }
+       
+       let maxScore = 0;
+       for (let j = 0; j < n; j++) {
+           if (match[j] !== -1 && match[j] < this.setASize && j < this.setBSize) {
+               maxScore += weights[match[j]][j];
+           }
+       }
+       return maxScore;
+   }
 
     resetGraph() {
         this.initializeGraph();
