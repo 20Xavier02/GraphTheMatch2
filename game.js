@@ -242,10 +242,7 @@ class BipartiteMatchingGame {
        this.editingEdge = edgeIndex;
        
        const input = document.createElement('input');
-       input.type = 'number';
-       input.step = '0.1';
-       input.min = '-1';
-       input.max = '1';
+       input.type = 'text';
        input.classList.add('weight-input');
        
        const edge = this.edges[edgeIndex];
@@ -256,63 +253,58 @@ class BipartiteMatchingGame {
        input.style.left = `${pos.x + rect.left - 30}px`;
        input.style.top = `${pos.y + rect.top - 10}px`;
        
-       input.addEventListener('mousedown', (e) => {
-           e.stopPropagation();
-       });
-       
-       input.addEventListener('click', (e) => {
-           e.stopPropagation();
-       });
+       input.addEventListener('mousedown', (e) => e.stopPropagation());
+       input.addEventListener('touchstart', (e) => e.stopPropagation());
+       input.addEventListener('touchend', (e) => e.stopPropagation());
        
        input.addEventListener('keydown', (e) => {
+           e.stopPropagation();
            if (e.key === 'Enter') {
                this.handleWeightInputComplete(input);
            }
-           e.stopPropagation();
-       });
-       
-       input.addEventListener('blur', () => {
-           this.handleWeightInputComplete(input);
        });
    
        document.body.appendChild(input);
+       
        setTimeout(() => {
            input.focus();
-           input.select();
+           input.setSelectionRange(0, input.value.length);
        }, 50);
+   
+       // Handle click/touch outside
+       const handleOutside = (e) => {
+           if (!input.contains(e.target)) {
+               this.handleWeightInputComplete(input);
+               document.removeEventListener('mousedown', handleOutside);
+               document.removeEventListener('touchstart', handleOutside);
+           }
+       };
+   
+       setTimeout(() => {
+           document.addEventListener('mousedown', handleOutside);
+           document.addEventListener('touchstart', handleOutside);
+       }, 100);
    }
 
     handleWeightInputComplete(input) {
        if (this.editingEdge !== null && input) {
-           let value = Number(input.value);
-           value = Math.max(-1, Math.min(1, value));
-           value = Number(value.toFixed(2));
+           let value = parseFloat(input.value);
+           
+           // If invalid, generate random weight
+           if (isNaN(value) || value < -1 || value > 1) {
+               value = this.generateWeight();
+           } else {
+               value = Number(value.toFixed(2));
+           }
            
            const edge = this.edges[this.editingEdge];
            edge.weight1 = value / 2;
            edge.weight2 = value / 2;
            
-           // Update both current score and max score
+           // Update both scores immediately
            this.updateScore();
            const maxScore = this.findMaximumMatching();
            document.getElementById('maxScore').textContent = maxScore.toFixed(2);
-           
-           // Update win message if current score matches max score
-           const currentScore = Array.from(this.highlightedEdges)
-               .reduce((sum, edgeIndex) => {
-                   const edge = this.edges[edgeIndex];
-                   return sum + edge.weight1 + edge.weight2;
-               }, 0);
-               
-           const winMessage = document.getElementById('winMessage');
-           if (winMessage) {
-               if (Math.abs(currentScore - maxScore) < 0.01) {
-                   winMessage.textContent = "You win! This is the best matching available.";
-                   winMessage.style.display = 'block';
-               } else {
-                   winMessage.style.display = 'none';
-               }
-           }
        }
        
        this.removeWeightInput();
@@ -399,33 +391,29 @@ class BipartiteMatchingGame {
     }
 }
 
-    findMaximumMatching() {
+   findMaximumMatching() {
        let maxScore = -Infinity;
        const edges = this.edges;
        
-       // Try all possible combinations of edges from A1 and A2
+       // Try all possible combinations of edges
        for (let i = 0; i < this.setBSize; i++) {
-           // Weight if we only use this edge from A1
-           const weightA1 = edges[i].weight1 + edges[i].weight2;
-           maxScore = Math.max(maxScore, weightA1);
-           
-           // Try combining with an edge from A2
            for (let j = 0; j < this.setBSize; j++) {
-               if (j === i) continue; // Skip if same B node
-               
-               const weightA2 = edges[this.setBSize + j].weight1 + edges[this.setBSize + j].weight2;
-               maxScore = Math.max(maxScore, weightA1 + weightA2);
+               if (j === i) continue;
+               for (let k = 0; k < this.setBSize; k++) {
+                   if (k === i || k === j) continue;
+                   
+                   const score = 
+                       (edges[i].weight1 + edges[i].weight2) +
+                       (edges[this.setBSize + j].weight1 + edges[this.setBSize + j].weight2) +
+                       (edges[2 * this.setBSize + k].weight1 + edges[2 * this.setBSize + k].weight2);
+                   maxScore = Math.max(maxScore, score);
+               }
            }
-       }
-       
-       // Also try edges from A2 alone
-       for (let j = 0; j < this.setBSize; j++) {
-           const weightA2 = edges[this.setBSize + j].weight1 + edges[this.setBSize + j].weight2;
-           maxScore = Math.max(maxScore, weightA2);
        }
        
        return maxScore;
    }
+
     hungarianAlgorithm(weights) {
        const n = weights.length;
        const lx = Array(n).fill(0);
