@@ -1,71 +1,79 @@
 class BipartiteMatchingGame {
    constructor() {
-    this.canvas = document.getElementById('gameCanvas');
-    this.ctx = this.canvas.getContext('2d');
-    
-    // Game state
-    this.setASize = 2;
-    this.setBSize = 3;
-    this.nodeRadius = 20;
-    this.nodes = { A: [], B: [] };
-    this.edges = [];
-    this.highlightedEdges = new Set();
-    
-    // Interaction states
-    this.isDragging = false;
-    this.draggedNode = null;
-    this.isEditingWeight = false;
-    this.editingEdge = null;
-    this.lastTap = 0;
-    this.lastEdgeClicked = null;
-    
-    // Initialize game
-    this.resizeCanvas();
-    this.initializeGraph();
-    
-    // Create max score display
-    const scoreDisplay = document.querySelector('.score-display');
-    if (!document.getElementById('maxScore')) {
-        const maxScoreDiv = document.createElement('div');
-        maxScoreDiv.innerHTML = `Max Score: <span id="maxScore">?</span>`;
-        scoreDisplay.appendChild(maxScoreDiv);
-    }
-    
-    // Create win message element
-    if (!document.getElementById('winMessage')) {
-        const winMessageDiv = document.createElement('div');
-        winMessageDiv.id = 'winMessage';
-        winMessageDiv.style.display = 'none';
-        scoreDisplay.appendChild(winMessageDiv);
-    }
-    
-    // Event listeners
-    window.addEventListener('resize', () => this.resizeCanvas());
-    
-    // Mouse events
-    this.canvas.addEventListener('mousedown', (e) => this.handleStart(e));
-    this.canvas.addEventListener('mousemove', (e) => this.handleMove(e));
-    this.canvas.addEventListener('mouseup', (e) => this.handleEnd(e));
-    
-    // Touch events
-    this.canvas.addEventListener('touchstart', (e) => this.handleStart(e));
-    this.canvas.addEventListener('touchmove', (e) => this.handleMove(e));
-    this.canvas.addEventListener('touchend', (e) => this.handleEnd(e));
-    this.canvas.addEventListener('touchcancel', (e) => this.handleEnd(e));
-    
-    // Global click/touch handler
-    document.addEventListener('click', (e) => this.handleGlobalClick(e));
-    document.addEventListener('touchend', (e) => this.handleGlobalClick(e));
-    
-    // Button handlers
-    document.getElementById('toggleInstructions').addEventListener('click', () => this.toggleInstructions());
-    document.getElementById('resetGraph').addEventListener('click', () => this.resetGraph());
-    document.getElementById('checkMatching').addEventListener('click', () => this.checkMatching());
-    
-    // Size input handlers
-    document.getElementById('setASize').addEventListener('change', (e) => this.handleSizeChange('A', e));
-    document.getElementById('setBSize').addEventListener('change', (e) => this.handleSizeChange('B', e));
-}
+       this.canvas = document.getElementById('gameCanvas');
+       this.ctx = this.canvas.getContext('2d');
+       
+       // Game state
+       this.setASize = 2;
+       this.setBSize = 3;
+       this.nodeRadius = 20;
+       this.nodes = { A: [], B: [] };
+       this.edges = [];
+       this.highlightedEdges = new Set();
+       
+       // Interaction states
+       this.isDragging = false;
+       this.draggedNode = null;
+       this.isEditingWeight = false;
+       this.editingEdge = null;
+       this.lastTap = 0;
+       this.lastEdgeClicked = null;
+       
+       // Add mobile detection
+       this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+       
+       // Adjust node radius for mobile
+       if (this.isMobile) {
+           this.nodeRadius = 15; // Smaller nodes on mobile
+       }
+       
+       // Initialize game
+       this.resizeCanvas();
+       this.initializeGraph();
+       
+       // Create max score display
+       const scoreDisplay = document.querySelector('.score-display');
+       if (!document.getElementById('maxScore')) {
+           const maxScoreDiv = document.createElement('div');
+           maxScoreDiv.innerHTML = `Max Score: <span id="maxScore">?</span>`;
+           scoreDisplay.appendChild(maxScoreDiv);
+       }
+       
+       // Create win message element
+       if (!document.getElementById('winMessage')) {
+           const winMessageDiv = document.createElement('div');
+           winMessageDiv.id = 'winMessage';
+           winMessageDiv.style.display = 'none';
+           scoreDisplay.appendChild(winMessageDiv);
+       }
+       
+       // Event listeners
+       window.addEventListener('resize', () => this.resizeCanvas());
+       
+       // Mouse events
+       this.canvas.addEventListener('mousedown', (e) => this.handleStart(e));
+       this.canvas.addEventListener('mousemove', (e) => this.handleMove(e));
+       this.canvas.addEventListener('mouseup', (e) => this.handleEnd(e));
+       
+       // Touch events
+       this.canvas.addEventListener('touchstart', (e) => this.handleStart(e));
+       this.canvas.addEventListener('touchmove', (e) => this.handleMove(e));
+       this.canvas.addEventListener('touchend', (e) => this.handleEnd(e));
+       this.canvas.addEventListener('touchcancel', (e) => this.handleEnd(e));
+       
+       // Global click/touch handler
+       document.addEventListener('click', (e) => this.handleGlobalClick(e));
+       document.addEventListener('touchend', (e) => this.handleGlobalClick(e));
+       
+       // Button handlers
+       document.getElementById('toggleInstructions').addEventListener('click', () => this.toggleInstructions());
+       document.getElementById('resetGraph').addEventListener('click', () => this.resetGraph());
+       document.getElementById('checkMatching').addEventListener('click', () => this.checkMatching());
+       
+       // Size input handlers
+       document.getElementById('setASize').addEventListener('change', (e) => this.handleSizeChange('A', e));
+       document.getElementById('setBSize').addEventListener('change', (e) => this.handleSizeChange('B', e));
+   }
 
     resizeCanvas() {
         const container = document.getElementById('canvasContainer');
