@@ -320,13 +320,16 @@ class BipartiteMatchingGame {
        
        const pos = this.getEventPosition(e);
        
-       // Update node position directly
-       this.draggedNode.x = pos.x;
-       this.draggedNode.y = pos.y;
+       // Calculate new position with boundary constraints
+       const newX = Math.min(Math.max(pos.x, this.nodeRadius), this.canvas.width - this.nodeRadius);
+       const newY = Math.min(Math.max(pos.y, this.nodeRadius), this.canvas.height - this.nodeRadius);
+       
+       // Update node position with constrained values
+       this.draggedNode.x = newX;
+       this.draggedNode.y = newY;
        
        this.draw();
    }
-
     handleEnd(e) {
        if (e) e.preventDefault();
        this.isDragging = false;
