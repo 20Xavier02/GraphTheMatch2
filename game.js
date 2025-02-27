@@ -69,6 +69,11 @@ class BipartiteMatchingGame {
        document.getElementById('toggleInstructions').addEventListener('click', () => this.toggleInstructions());
        document.getElementById('resetGraph').addEventListener('click', () => this.resetGraph());
        document.getElementById('checkMatching').addEventListener('click', () => this.checkMatching());
+       document.getElementById('closeInstructions').addEventListener('click', () => {
+           document.querySelector('.instructions-overlay').style.display = 'none';
+           document.getElementById('gameCanvas').classList.remove('hidden');
+           document.getElementById('toggleInstructions').textContent = 'Instructions';
+       });
        
        // Size input handlers
        document.getElementById('setASize').addEventListener('change', (e) => this.handleSizeChange('A', e));
