@@ -472,15 +472,31 @@ class BipartiteMatchingGame {
 }
 
 findMaximumMatching() {
-    // Helper function to get edge weight
-    const getEdgeWeight = (fromIndex, toIndex) => {
-        const edge = this.edges[fromIndex * this.setBSize + toIndex];
-        // Make sure we're adding both weights
-        return (edge.weight1 + edge.weight2);
+    // Create weight matrix for easier access
+    const weights = Array(this.setASize).fill().map(() => Array(this.setBSize).fill(0));
+    for (let i = 0; i < this.setASize; i++) {
+        for (let j = 0; j < this.setBSize; j++) {
+            const edge = this.edges[i * this.setBSize + j];
+            weights[i][j] = edge.weight1 + edge.weight2;
+        }
+    }
+
+    // Helper function to check if a matching is valid
+    const isValidMatching = (matching) => {
+        const usedA = new Set();
+        const usedB = new Set();
+        for (const [a, b] of matching) {
+            if (usedA.has(a) || usedB.has(b)) return false;
+            usedA.add(a);
+            usedB.add(b);
+        }
+        return true;
     };
 
-    // Rest of the function remains the same...
-    let maxScore = 0;
+    // Helper function to get edge weight
+    const getEdgeWeight = (a, b) => weights[a][b];
+
+    let maxScore = -Infinity;
     const generateMatchings = (current, aIndex) => {
         if (aIndex === this.setASize) {
             if (isValidMatching(current)) {
@@ -496,12 +512,11 @@ findMaximumMatching() {
             generateMatchings([...current, [aIndex, b]], aIndex + 1);
         }
         // Try not matching current A node
-        generateMatchings([...current], aIndex + 1);
+        generateMatchings(current, aIndex + 1);
     };
 
     generateMatchings([], 0);
-    // Round to 2 decimal places at the end
-    return maxScore;
+    return maxScore === -Infinity ? 0 : maxScore;
 }
 
 checkMatching() {
