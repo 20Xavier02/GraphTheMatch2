@@ -46,6 +46,22 @@ button:hover {
     opacity: 0.9;
 }
 
+.close-button {
+    display: block;
+    margin: 20px auto 10px;
+    padding: 10px 30px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.close-button:hover {
+    background-color: #1976D2;
+}
+
 input[type="number"] {
     width: 50px;
     padding: 4px;
@@ -134,8 +150,9 @@ canvas {
 }
 
 .instructions-content li {
-    margin-bottom: 10px;
+    margin-bottom: 20px;
     color: #444;
+    line-height: 1.5;
 }
 
 .hidden {
@@ -237,5 +254,11 @@ canvas {
 
     .instructions-overlay {
         padding: 10px;
+    }
+
+    .close-button {
+        width: 100%;
+        padding: 15px;
+        margin-top: 30px;
     }
 }
