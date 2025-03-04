@@ -88,6 +88,102 @@ class BipartiteMatchingGame {
     }
    
    
+   checkNodeOverlap(x, y, existingNodes, customMinDistance = null) {
+       // Base minimum distance on screen size and device type
+       let minDistance;
+       if (this.isMobile) {
+           minDistance = customMinDistance || Math.min(this.canvas.width, this.canvas.height) * 0.2; // 20% of screen size for mobile
+       } else {
+           minDistance = customMinDistance || Math.min(this.canvas.width, this.canvas.height) * 0.15; // 15% for desktop
+       }
+   
+       for (const node of existingNodes) {
+           const dx = node.x - x;
+           const dy = node.y - y;
+           const distance = Math.sqrt(dx * dx + dy * dy);
+           if (distance < minDistance) {
+               return true;
+           }
+       }
+       return false;
+   }
+   
+   checkWeightOverlap(x, y, existingNodes) {
+       const weightRadius = this.isMobile ? 
+           this.nodeRadius * 3 : // Larger spacing for weights on mobile
+           this.nodeRadius * 2.5; // Desktop spacing
+   
+       for (const edge of this.edges) {
+           const fromNode = this.nodes[edge.from.set][edge.from.index];
+           const toNode = this.nodes[edge.to.set][edge.to.index];
+           
+           if (fromNode && toNode) {
+               const midX = (fromNode.x + toNode.x) / 2;
+               const midY = (fromNode.y + toNode.y) / 2;
+               
+               const dx = x - midX;
+               const dy = y - midY;
+               const distance = Math.sqrt(dx * dx + dy * dy);
+               
+               if (distance < weightRadius) {
+                   return true;
+               }
+           }
+       }
+       return false;
+   }
+   
+   getRandomPosition(allNodes) {
+       // Adjust center buffer based on device
+       const centerBuffer = this.isMobile ? 0.25 : 0.2; // 25% buffer on mobile, 20% on desktop
+       const padding = this.isMobile ? 
+           this.nodeRadius * 4 : // More padding on mobile
+           this.nodeRadius * 3;  // Desktop padding
+       
+       // Calculate usable area
+       const minX = this.canvas.width * centerBuffer;
+       const maxX = this.canvas.width * (1 - centerBuffer);
+       const minY = this.canvas.height * centerBuffer;
+       const maxY = this.canvas.height * (1 - centerBuffer);
+       
+       // Base minimum distance on screen size and device
+       const minDistance = this.isMobile ?
+           Math.min(this.canvas.width, this.canvas.height) * 0.2 : // 20% of screen size for mobile
+           Math.min(this.canvas.width, this.canvas.height) * 0.15; // 15% for desktop
+       
+       let x, y;
+       let attempts = 0;
+       const maxAttempts = 150; // Increased max attempts
+   
+       do {
+           x = minX + Math.random() * (maxX - minX);
+           y = minY + Math.random() * (maxY - minY);
+           attempts++;
+           
+           // Gradually reduce spacing requirements if having trouble placing nodes
+           if (attempts > maxAttempts / 2) {
+               const reductionFactor = 1 - (attempts - maxAttempts / 2) / (maxAttempts / 2);
+               const currentMinDistance = minDistance * Math.max(0.6, reductionFactor); // Minimum 60% of original distance
+               
+               if (!this.checkNodeOverlap(x, y, allNodes, currentMinDistance) && 
+                   !this.checkWeightOverlap(x, y, allNodes)) {
+                   break;
+               }
+           }
+       } while ((this.checkNodeOverlap(x, y, allNodes, minDistance) || 
+                 this.checkWeightOverlap(x, y, allNodes)) && 
+                attempts < maxAttempts);
+   
+       return { x, y };
+   }
+   
+   generateWeight() {
+       // Skew distribution towards lower numbers
+       const rand = Math.random();
+       const skewedRand = rand * rand; // Square for more low numbers
+       return Number(skewedRand.toFixed(2));
+   }
+   
    initializeGraph() {
        const allNodes = [];
        this.nodes = { A: [], B: [] };
@@ -134,89 +230,9 @@ class BipartiteMatchingGame {
            }
        }
    
-       document.getElementById('maxScore').textContent = '?'; // Set to question mark on initialization
+       document.getElementById('maxScore').textContent = '?';
        this.updateScore();
        this.draw();
-   }
-
-    generateWeight() {
-       // Skew distribution towards lower numbers using square of random
-       const rand = Math.random();
-       const skewedRand = rand * rand; // Squaring makes numbers closer to 0 more likely
-       return Number(skewedRand.toFixed(2));
-   }
-    checkNodeOverlap(x, y, existingNodes, customMinDistance = null) {
-       const minDistance = customMinDistance || (this.nodeRadius * 3);
-       for (const node of existingNodes) {
-           const dx = node.x - x;
-           const dy = node.y - y;
-           const distance = Math.sqrt(dx * dx + dy * dy);
-           if (distance < minDistance) {
-               return true;
-           }
-       }
-       return false;
-   }
-   checkWeightOverlap(x, y, existingNodes) {
-       // Check overlap with edge weight positions
-       for (const edge of this.edges) {
-           const fromNode = this.nodes[edge.from.set][edge.from.index];
-           const toNode = this.nodes[edge.to.set][edge.to.index];
-           
-           if (fromNode && toNode) {
-               // Calculate weight label position (midpoint)
-               const midX = (fromNode.x + toNode.x) / 2;
-               const midY = (fromNode.y + toNode.y) / 2;
-               
-               // Check distance from weight label
-               const dx = x - midX;
-               const dy = y - midY;
-               const distance = Math.sqrt(dx * dx + dy * dy);
-               
-               // Use a larger radius for weight text to ensure good spacing
-               if (distance < this.nodeRadius * 2.5) {
-                   return true;
-               }
-           }
-       }
-       return false;
-   }
-   
-   getRandomPosition(allNodes) {
-       const padding = this.nodeRadius * 3;
-       const centerBuffer = 0.2;
-       
-       const minX = this.canvas.width * centerBuffer;
-       const maxX = this.canvas.width * (1 - centerBuffer);
-       const minY = this.canvas.height * centerBuffer;
-       const maxY = this.canvas.height * (1 - centerBuffer);
-       
-       const minDistance = Math.min(this.canvas.width, this.canvas.height) * 0.15;
-       
-       let x, y;
-       let attempts = 0;
-       const maxAttempts = 100;
-   
-       do {
-           x = minX + Math.random() * (maxX - minX);
-           y = minY + Math.random() * (maxY - minY);
-           attempts++;
-           
-           if (attempts > maxAttempts / 2) {
-               const reductionFactor = 1 - (attempts - maxAttempts / 2) / (maxAttempts / 2);
-               const currentMinDistance = minDistance * Math.max(0.5, reductionFactor);
-               
-               // Check both node overlap and weight label overlap
-               if (!this.checkNodeOverlap(x, y, allNodes, currentMinDistance) && 
-                   !this.checkWeightOverlap(x, y, allNodes)) {
-                   break;
-               }
-           }
-       } while ((this.checkNodeOverlap(x, y, allNodes, minDistance) || 
-                 this.checkWeightOverlap(x, y, allNodes)) && 
-                attempts < maxAttempts);
-   
-       return { x, y };
    }
     getEventPosition(e) {
        const rect = this.canvas.getBoundingClientRect();
@@ -642,11 +658,11 @@ checkMatching() {
    }
 
     resetGraph() {
-    this.initializeGraph();
-    document.getElementById('currentScore').textContent = '0.00';
-    document.getElementById('maxScore').textContent = '?'; // Reset to question mark
-    document.getElementById('winMessage').style.display = 'none';
-}
+       this.initializeGraph();
+       document.getElementById('currentScore').textContent = '0.00';
+       document.getElementById('maxScore').textContent = '?';
+       document.getElementById('winMessage').style.display = 'none';
+   }
 
     handleSizeChange(set, e) {
         const value = parseInt(e.target.value);
