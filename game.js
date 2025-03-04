@@ -189,14 +189,25 @@ class BipartiteMatchingGame {
    }
 
     generateWeight() {
-    if (Math.random() < 0.375) {
-        // 37.5% chance of weight being close to 0
-        return Number((Math.random() * 0.2 - 0.1).toFixed(2));
-    }
-    // Generate weight between -0.9 and 0.9 to avoid rounding issues
-    return Number((Math.random() * 1.8 - 0.9).toFixed(2));
-}
-
+       if (Math.random() < 0.375) {
+           // 37.5% chance of weight being close to 0
+           return Number((Math.random() * 0.2).toFixed(2));
+       }
+       // Generate weight between 0 and 0.9 to avoid rounding issues
+       return Number((Math.random() * 0.9 + 0.1).toFixed(2));
+   }
+    checkNodeOverlap(x, y, existingNodes) {
+       const minDistance = this.nodeRadius * 3; // Minimum distance between nodes
+       for (const node of existingNodes) {
+           const dx = node.x - x;
+           const dy = node.y - y;
+           const distance = Math.sqrt(dx * dx + dy * dy);
+           if (distance < minDistance) {
+               return true;
+           }
+       }
+       return false;
+   }
     getEventPosition(e) {
        const rect = this.canvas.getBoundingClientRect();
        let clientX, clientY;
@@ -627,47 +638,70 @@ checkMatching() {
        this.edges = [];
        this.highlightedEdges = new Set();
        
-       // Create nodes for set A with original positions
-       const ySpacingA = this.canvas.height / (this.setASize + 1);
+       const padding = this.nodeRadius * 2;
+       const allNodes = [];
+       
+       // Helper function to get random position
+       const getRandomPosition = () => {
+           let x, y;
+           let attempts = 0;
+           const maxAttempts = 50;
+   
+           do {
+               x = padding + Math.random() * (this.canvas.width - 2 * padding);
+               y = padding + Math.random() * (this.canvas.height - 2 * padding);
+               attempts++;
+           } while (this.checkNodeOverlap(x, y, allNodes) && attempts < maxAttempts);
+   
+           return { x, y };
+       };
+   
+       // Create nodes for set A with random positions
        for (let i = 0; i < this.setASize; i++) {
-           this.nodes.A.push({
-               x: this.canvas.width * 0.25, // Fixed left position
-               y: ySpacingA * (i + 1),
+           const pos = getRandomPosition();
+           const newNode = {
+               x: pos.x,
+               y: pos.y,
                label: `A${i + 1}`,
                set: 'A'
-           });
+           };
+           this.nodes.A.push(newNode);
+           allNodes.push(newNode);
        }
    
-       // Create nodes for set B with original positions
-       const ySpacingB = this.canvas.height / (this.setBSize + 1);
+       // Create nodes for set B with random positions
        for (let i = 0; i < this.setBSize; i++) {
-           this.nodes.B.push({
-               x: this.canvas.width * 0.75, // Fixed right position
-               y: ySpacingB * (i + 1),
+           const pos = getRandomPosition();
+           const newNode = {
+               x: pos.x,
+               y: pos.y,
                label: `B${i + 1}`,
                set: 'B'
-           });
+           };
+           this.nodes.B.push(newNode);
+           allNodes.push(newNode);
        }
    
        // Create edges with new random weights
        for (let i = 0; i < this.setASize; i++) {
            for (let j = 0; j < this.setBSize; j++) {
-               const weight1 = this.generateWeight();
-               const weight2 = this.generateWeight();
+               const weight = this.generateWeight();
                this.edges.push({
                    from: { set: 'A', index: i },
                    to: { set: 'B', index: j },
-                   weight1: weight1 / 2,
-                   weight2: weight2 / 2,
+                   weight1: weight / 2,
+                   weight2: weight / 2,
                    highlighted: false
                });
            }
        }
    
        // Reset scores and messages
+       document.getElementById('currentScore').textContent = '0.00';
        document.getElementById('maxScore').textContent = '?';
        document.getElementById('winMessage').style.display = 'none';
        this.updateScore();
+       this.checkMatching(); // Update max score
        this.draw();
    }
 
