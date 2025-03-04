@@ -134,44 +134,43 @@ class BipartiteMatchingGame {
    }
    
   getRandomPosition(allNodes) {
-    // Much wider range for mobile
-    const centerBuffer = this.isMobile ? 0.1 : 0.2; // Only 10% buffer on mobile to use more screen
-    const padding = this.isMobile ? 
-        this.nodeRadius * 4 : 
-        this.nodeRadius * 3;
-    
-    // Calculate usable area
-    const minX = this.canvas.width * centerBuffer;
-    const maxX = this.canvas.width * (1 - centerBuffer);
-    const minY = this.canvas.height * centerBuffer;
-    const maxY = this.canvas.height * (1 - centerBuffer);
-    
-    // Increased minimum distance for mobile
-    const minDistance = this.isMobile ?
-        Math.min(this.canvas.width, this.canvas.height) * 0.25 : // 25% of screen size for mobile
-        Math.min(this.canvas.width, this.canvas.height) * 0.15;  // 15% for desktop
-    
-    let x, y;
-    let attempts = 0;
-    const maxAttempts = 150;
-
-    do {
-        x = minX + Math.random() * (maxX - minX);
-        y = minY + Math.random() * (maxY - minY);
-        attempts++;
-        
-        if (attempts > maxAttempts / 2) {
-            const reductionFactor = 1 - (attempts - maxAttempts / 2) / (maxAttempts / 2);
-            const currentMinDistance = minDistance * Math.max(0.6, reductionFactor);
-            
-            if (!this.checkNodeOverlap(x, y, allNodes, currentMinDistance)) {
-                break;
-            }
-        }
-    } while (this.checkNodeOverlap(x, y, allNodes, minDistance) && attempts < maxAttempts);
-
-    return { x, y };
-}
+       const padding = this.nodeRadius * (this.isMobile ? 4 : 3);
+       const centerBuffer = this.isMobile ? 0.1 : 0.2; // 10% buffer on mobile to use more screen
+       
+       const minX = this.canvas.width * centerBuffer;
+       const maxX = this.canvas.width * (1 - centerBuffer);
+       const minY = this.canvas.height * centerBuffer;
+       const maxY = this.canvas.height * (1 - centerBuffer);
+       
+       // Increased minimum distance for mobile
+       const minDistance = this.isMobile ?
+           Math.min(this.canvas.width, this.canvas.height) * 0.25 : // 25% for mobile
+           Math.min(this.canvas.width, this.canvas.height) * 0.15;  // 15% for desktop
+       
+       let x, y;
+       let attempts = 0;
+       const maxAttempts = 100;
+   
+       do {
+           x = minX + Math.random() * (maxX - minX);
+           y = minY + Math.random() * (maxY - minY);
+           attempts++;
+           
+           if (attempts > maxAttempts / 2) {
+               const reductionFactor = 1 - (attempts - maxAttempts / 2) / (maxAttempts / 2);
+               const currentMinDistance = minDistance * Math.max(0.6, reductionFactor);
+               
+               if (!this.checkNodeOverlap(x, y, allNodes, currentMinDistance) && 
+                   !this.checkWeightOverlap(x, y, allNodes)) {
+                   break;
+               }
+           }
+       } while ((this.checkNodeOverlap(x, y, allNodes, minDistance) || 
+                 this.checkWeightOverlap(x, y, allNodes)) && 
+                attempts < maxAttempts);
+   
+       return { x, y };
+   }
    
    generateWeight() {
        // Skew distribution towards lower numbers
@@ -247,50 +246,51 @@ class BipartiteMatchingGame {
            y: (clientY - rect.top) * (this.canvas.height / rect.height)
        };
    }
-   findClickedEdge(pos) {
-    for (let i = 0; i < this.edges.length; i++) {
-        const edge = this.edges[i];
-        const fromNode = this.nodes[edge.from.set][edge.from.index];
-        const toNode = this.nodes[edge.to.set][edge.to.index];
-        
-        // Calculate distance from click to line segment
-        const A = pos.x - fromNode.x;
-        const B = pos.y - fromNode.y;
-        const C = toNode.x - fromNode.x;
-        const D = toNode.y - fromNode.y;
-        
-        const dot = A * C + B * D;
-        const len_sq = C * C + D * D;
-        let param = -1;
-        
-        if (len_sq !== 0) {
-            param = dot / len_sq;
-        }
-        
-        let xx, yy;
-        
-        if (param < 0) {
-            xx = fromNode.x;
-            yy = fromNode.y;
-        } else if (param > 1) {
-            xx = toNode.x;
-            yy = toNode.y;
-        } else {
-            xx = fromNode.x + param * C;
-            yy = fromNode.y + param * D;
-        }
-        
-        const dx = pos.x - xx;
-        const dy = pos.y - yy;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // Increased click detection area
-        if (distance < 20) {
-            return i;
-        }
-    }
-    return -1;
-}
+   
+    findClickedEdge(pos) {
+       for (let i = 0; i < this.edges.length; i++) {
+           const edge = this.edges[i];
+           const fromNode = this.nodes[edge.from.set][edge.from.index];
+           const toNode = this.nodes[edge.to.set][edge.to.index];
+           
+           // Calculate distance from click to line segment
+           const A = pos.x - fromNode.x;
+           const B = pos.y - fromNode.y;
+           const C = toNode.x - fromNode.x;
+           const D = toNode.y - fromNode.y;
+           
+           const dot = A * C + B * D;
+           const len_sq = C * C + D * D;
+           let param = -1;
+           
+           if (len_sq !== 0) {
+               param = dot / len_sq;
+           }
+           
+           let xx, yy;
+           
+           if (param < 0) {
+               xx = fromNode.x;
+               yy = fromNode.y;
+           } else if (param > 1) {
+               xx = toNode.x;
+               yy = toNode.y;
+           } else {
+               xx = fromNode.x + param * C;
+               yy = fromNode.y + param * D;
+           }
+           
+           const dx = pos.x - xx;
+           const dy = pos.y - yy;
+           const distance = Math.sqrt(dx * dx + dy * dy);
+           
+           if (distance < 20) { // Increased click detection area
+               return i;
+           }
+       }
+       return -1;
+   }
+   
    findClickedNode(pos) {
        // Check set A nodes
        for (let i = 0; i < this.nodes.A.length; i++) {
@@ -347,26 +347,27 @@ class BipartiteMatchingGame {
     }
    
    handleStart(e) {
-       e.preventDefault();
-       const pos = this.getEventPosition(e);
-       
-       // Always check for node drag first
-       const clickedNode = this.findClickedNode(pos);
-       if (clickedNode) {
-           this.isDragging = true;
-           this.draggedNode = clickedNode;
-           this.lastDragPos = pos;
-           return;
-       }
-       
-       // If no node clicked, check for edge
-       const edgeIndex = this.findClickedEdge(pos);
-       if (edgeIndex !== -1) {
-           if (this.canHighlightEdge(edgeIndex)) {
-               this.toggleEdgeHighlight(edgeIndex);
-           }
-       }
-   }
+    e.preventDefault();
+    const pos = this.getEventPosition(e);
+    
+    // Check for node drag first
+    const clickedNode = this.findClickedNode(pos);
+    if (clickedNode) {
+        this.isDragging = true;
+        this.draggedNode = clickedNode;
+        this.lastDragPos = pos;
+        return;
+    }
+    
+    // Then check for edge click
+    const edgeIndex = this.findClickedEdge(pos);
+    if (edgeIndex !== -1) {
+        if (this.canHighlightEdge(edgeIndex)) {
+            this.toggleEdgeHighlight(edgeIndex);
+        }
+        return;
+    }
+}
 
     handleMove(e) {
        if (!this.isDragging || !this.draggedNode) return;
@@ -709,12 +710,11 @@ checkMatching() {
     draw() {
        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
    
-       // Draw edges first
+       // Draw edges and weights first
        this.edges.forEach((edge, index) => {
            const fromNode = this.nodes[edge.from.set][edge.from.index];
            const toNode = this.nodes[edge.to.set][edge.to.index];
            
-           // Draw edge
            this.ctx.beginPath();
            this.ctx.moveTo(fromNode.x, fromNode.y);
            this.ctx.lineTo(toNode.x, toNode.y);
@@ -746,7 +746,7 @@ checkMatching() {
            this.ctx.restore();
        });
    
-       // Draw nodes last so they're always on top
+       // Draw nodes last (on top)
        for (const set of ['A', 'B']) {
            this.nodes[set].forEach((node, index) => {
                this.ctx.beginPath();
