@@ -142,8 +142,8 @@ class BipartiteMatchingGame {
        // Generate a random number between 0 and 1 with 2 decimal places
        return Number((Math.random()).toFixed(2));
    }
-    checkNodeOverlap(x, y, existingNodes) {
-       const minDistance = this.nodeRadius * 3;
+    checkNodeOverlap(x, y, existingNodes, customMinDistance = null) {
+       const minDistance = customMinDistance || (this.nodeRadius * 3);
        for (const node of existingNodes) {
            const dx = node.x - x;
            const dy = node.y - y;
@@ -155,19 +155,40 @@ class BipartiteMatchingGame {
        return false;
    }
    getRandomPosition(allNodes) {
-       const padding = this.nodeRadius * 2;
-       let x, y;
-       let attempts = 0;
-       const maxAttempts = 50;
-   
-       do {
-           x = padding + Math.random() * (this.canvas.width - 2 * padding);
-           y = padding + Math.random() * (this.canvas.height - 2 * padding);
-           attempts++;
-       } while (this.checkNodeOverlap(x, y, allNodes) && attempts < maxAttempts);
-   
-       return { x, y };
-   }
+    const padding = this.nodeRadius * 3; // Increased padding
+    const centerBuffer = 0.2; // 20% buffer from edges to keep nodes more central
+    
+    // Calculate the usable area (more centered)
+    const minX = this.canvas.width * centerBuffer;
+    const maxX = this.canvas.width * (1 - centerBuffer);
+    const minY = this.canvas.height * centerBuffer;
+    const maxY = this.canvas.height * (1 - centerBuffer);
+    
+    // Increase minimum distance between nodes based on canvas size
+    const minDistance = Math.min(this.canvas.width, this.canvas.height) * 0.15; // 15% of smaller dimension
+    
+    let x, y;
+    let attempts = 0;
+    const maxAttempts = 100; // Increased max attempts
+
+    do {
+        x = minX + Math.random() * (maxX - minX);
+        y = minY + Math.random() * (maxY - minY);
+        attempts++;
+        
+        // If we can't find a spot after many attempts, gradually reduce the minimum distance
+        if (attempts > maxAttempts / 2) {
+            const reductionFactor = 1 - (attempts - maxAttempts / 2) / (maxAttempts / 2);
+            const currentMinDistance = minDistance * Math.max(0.5, reductionFactor);
+            
+            if (!this.checkNodeOverlap(x, y, allNodes, currentMinDistance)) {
+                break;
+            }
+        }
+    } while (this.checkNodeOverlap(x, y, allNodes, minDistance) && attempts < maxAttempts);
+
+    return { x, y };
+}
     getEventPosition(e) {
        const rect = this.canvas.getBoundingClientRect();
        let clientX, clientY;
