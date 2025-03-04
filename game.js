@@ -87,6 +87,7 @@ class BipartiteMatchingGame {
         this.draw();
     }
    
+   
    initializeGraph() {
        const allNodes = [];
        this.nodes = { A: [], B: [] };
@@ -133,14 +134,16 @@ class BipartiteMatchingGame {
            }
        }
    
+       document.getElementById('maxScore').textContent = '?'; // Set to question mark on initialization
        this.updateScore();
-       this.checkMatching();
        this.draw();
    }
 
     generateWeight() {
-       // Generate a random number between 0 and 1 with 2 decimal places
-       return Number((Math.random()).toFixed(2));
+       // Skew distribution towards lower numbers using square of random
+       const rand = Math.random();
+       const skewedRand = rand * rand; // Squaring makes numbers closer to 0 more likely
+       return Number(skewedRand.toFixed(2));
    }
     checkNodeOverlap(x, y, existingNodes, customMinDistance = null) {
        const minDistance = customMinDistance || (this.nodeRadius * 3);
@@ -154,41 +157,67 @@ class BipartiteMatchingGame {
        }
        return false;
    }
+   checkWeightOverlap(x, y, existingNodes) {
+       // Check overlap with edge weight positions
+       for (const edge of this.edges) {
+           const fromNode = this.nodes[edge.from.set][edge.from.index];
+           const toNode = this.nodes[edge.to.set][edge.to.index];
+           
+           if (fromNode && toNode) {
+               // Calculate weight label position (midpoint)
+               const midX = (fromNode.x + toNode.x) / 2;
+               const midY = (fromNode.y + toNode.y) / 2;
+               
+               // Check distance from weight label
+               const dx = x - midX;
+               const dy = y - midY;
+               const distance = Math.sqrt(dx * dx + dy * dy);
+               
+               // Use a larger radius for weight text to ensure good spacing
+               if (distance < this.nodeRadius * 2.5) {
+                   return true;
+               }
+           }
+       }
+       return false;
+   }
+   
    getRandomPosition(allNodes) {
-    const padding = this.nodeRadius * 3; // Increased padding
-    const centerBuffer = 0.2; // 20% buffer from edges to keep nodes more central
-    
-    // Calculate the usable area (more centered)
-    const minX = this.canvas.width * centerBuffer;
-    const maxX = this.canvas.width * (1 - centerBuffer);
-    const minY = this.canvas.height * centerBuffer;
-    const maxY = this.canvas.height * (1 - centerBuffer);
-    
-    // Increase minimum distance between nodes based on canvas size
-    const minDistance = Math.min(this.canvas.width, this.canvas.height) * 0.15; // 15% of smaller dimension
-    
-    let x, y;
-    let attempts = 0;
-    const maxAttempts = 100; // Increased max attempts
-
-    do {
-        x = minX + Math.random() * (maxX - minX);
-        y = minY + Math.random() * (maxY - minY);
-        attempts++;
-        
-        // If we can't find a spot after many attempts, gradually reduce the minimum distance
-        if (attempts > maxAttempts / 2) {
-            const reductionFactor = 1 - (attempts - maxAttempts / 2) / (maxAttempts / 2);
-            const currentMinDistance = minDistance * Math.max(0.5, reductionFactor);
-            
-            if (!this.checkNodeOverlap(x, y, allNodes, currentMinDistance)) {
-                break;
-            }
-        }
-    } while (this.checkNodeOverlap(x, y, allNodes, minDistance) && attempts < maxAttempts);
-
-    return { x, y };
-}
+       const padding = this.nodeRadius * 3;
+       const centerBuffer = 0.2;
+       
+       const minX = this.canvas.width * centerBuffer;
+       const maxX = this.canvas.width * (1 - centerBuffer);
+       const minY = this.canvas.height * centerBuffer;
+       const maxY = this.canvas.height * (1 - centerBuffer);
+       
+       const minDistance = Math.min(this.canvas.width, this.canvas.height) * 0.15;
+       
+       let x, y;
+       let attempts = 0;
+       const maxAttempts = 100;
+   
+       do {
+           x = minX + Math.random() * (maxX - minX);
+           y = minY + Math.random() * (maxY - minY);
+           attempts++;
+           
+           if (attempts > maxAttempts / 2) {
+               const reductionFactor = 1 - (attempts - maxAttempts / 2) / (maxAttempts / 2);
+               const currentMinDistance = minDistance * Math.max(0.5, reductionFactor);
+               
+               // Check both node overlap and weight label overlap
+               if (!this.checkNodeOverlap(x, y, allNodes, currentMinDistance) && 
+                   !this.checkWeightOverlap(x, y, allNodes)) {
+                   break;
+               }
+           }
+       } while ((this.checkNodeOverlap(x, y, allNodes, minDistance) || 
+                 this.checkWeightOverlap(x, y, allNodes)) && 
+                attempts < maxAttempts);
+   
+       return { x, y };
+   }
     getEventPosition(e) {
        const rect = this.canvas.getBoundingClientRect();
        let clientX, clientY;
@@ -527,11 +556,10 @@ checkMatching() {
             return sum + (edge.weight1 + edge.weight2);
         }, 0);
     
-    // Round both scores to 2 decimal places
+    // Show the max score when Check is clicked
     document.getElementById('maxScore').textContent = maxScore.toFixed(2);
     
     const winMessage = document.getElementById('winMessage');
-    // Use a small epsilon for floating point comparison
     if (Math.abs(currentScore - maxScore) < 0.01) {
         winMessage.textContent = "You win! This is the best matching available.";
         winMessage.style.display = 'block';
@@ -614,12 +642,11 @@ checkMatching() {
    }
 
     resetGraph() {
-       this.initializeGraph();
-       document.getElementById('currentScore').textContent = '0.00';
-       document.getElementById('maxScore').textContent = '?';
-       document.getElementById('winMessage').style.display = 'none';
-       this.checkMatching(); // Update max score
-   }
+    this.initializeGraph();
+    document.getElementById('currentScore').textContent = '0.00';
+    document.getElementById('maxScore').textContent = '?'; // Reset to question mark
+    document.getElementById('winMessage').style.display = 'none';
+}
 
     handleSizeChange(set, e) {
         const value = parseInt(e.target.value);
