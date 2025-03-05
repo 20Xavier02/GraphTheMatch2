@@ -28,17 +28,17 @@
         <canvas id="gameCanvas"></canvas>
         <div class="instructions-overlay">
             <div class="instructions-content">
-                <p>A matching is a set of edges such that no two edges share a common vertex. Find the matching that maximizes the sum of weights.</p>
+                <p>A matching is a set of edges such that no two edges share a common vertex. Find the matching that maximizes the sum of weights</p>
                 <h2>Intuition</h2>
                 <ul>
                     <li>Set A (red) is job applicants, Set B (blue) is companies. The edge weights [0,1] represent how suitable a person is for the job they applied to</li>
-                    <li>Red and and blue are two seperate groups of people. Each edge weight represents the compatibility score between each person in one group, to each person of the other group</li>
-                    <li>Set A is people calling an Uber, and B is Uber drivers. The edge weight represents how convenient it is for the driver to pick up the passenger</li>
+                    <li>Red and and blue are two friend groups. Each edge weight represents the compatibility score between people of each group</li>
+                    <li>Set A is people calling an Uber, B is the drivers. Weights represents how convenient it is for the driver to pick up each passenger</li>
                 </ul>
                 <h2>Instructions</h2>
                 <ul>
                     <li>Click and drag nodes to move them around</li>
-                    <li>Click on the edges' weights (the numbers) to select/unselect them in the matching</li>
+                    <li>Click on the edges to select/unselect them in the matching</li>
                     <li>Use the Check button to verify if your matching is optimal</li>
                     <li>Use Reset to start over with new random weights</li>
                     <li>Change the number of nodes in each set on the top right</li>
